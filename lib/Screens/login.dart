@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'create_account_screen.dart';
+import 'homepage.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -55,7 +56,12 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40.0),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MainFeedScreen()),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF8282),
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -74,12 +80,12 @@ class LoginScreen extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
+                  backgroundColor: const Color(0xFFFF8282),
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
                 ),
                 child: const Text(
-                  'Criar conta',
-                  style: TextStyle(color: Color(0xFF1E3746), fontWeight: FontWeight.bold),
+                  'Criar Conta',
+                  style: TextStyle(color: Color(0xFFF3E3B6), fontWeight: FontWeight.bold),
                 ),
               ),
             ],

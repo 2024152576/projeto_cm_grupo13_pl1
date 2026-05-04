@@ -6,34 +6,46 @@ class CreateAccountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF1E3746),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: Color(0xFFF3E3B6)),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(30.0),
+        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 10.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Crie a sua conta',
+              'Criar Conta',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: Color(0xFFF3E3B6),
               ),
             ),
-            const SizedBox(height: 30),
-            _campoTexto('Nome Completo'),
-            const SizedBox(height: 15),
+            const SizedBox(height: 40),
+
+            _campoTexto('Primeiro Nome'),
+            const SizedBox(height: 20),
+
+            _campoTexto('Último Nome'),
+            const SizedBox(height: 20),
+
+            _campoTexto('Nome de utilizador'),
+            const SizedBox(height: 20),
+
             _campoTexto('Email'),
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
+
             _campoTexto('Palavra-passe', obscure: true),
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
+
             _campoTexto('Confirmar Palavra-passe', obscure: true),
-            const SizedBox(height: 30),
+            const SizedBox(height: 40),
+
             ElevatedButton(
               onPressed: () {},
               style: ElevatedButton.styleFrom(
@@ -44,10 +56,15 @@ class CreateAccountScreen extends StatelessWidget {
                 ),
               ),
               child: const Text(
-                'Registar',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                'Criar Conta',
+                style: TextStyle(
+                  color: Color(0xFFF3E3B6),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -57,10 +74,12 @@ class CreateAccountScreen extends StatelessWidget {
   Widget _campoTexto(String hint, {bool obscure = false}) {
     return TextField(
       obscureText: obscure,
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: const Color(0xFF323232),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
           borderSide: BorderSide.none,
