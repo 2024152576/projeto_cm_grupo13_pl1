@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'Screens/login.dart';
+import 'Screens/splash_screen.dart';
 
 void main() {
   runApp(const MinhaApp());
@@ -8,13 +8,12 @@ void main() {
 class MinhaApp extends StatelessWidget {
   const MinhaApp({super.key});
 
-
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Aplicação Flutter',
-
-      home: const LoginScreen(),
+      title: 'Decibel',
+      home: const SplashScreen(),
     );
   }
 }
