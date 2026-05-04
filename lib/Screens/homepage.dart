@@ -100,7 +100,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
           songTitle: 'Stronger',
           artist: 'Kanye West',
           albumImagePath: 'assets/Covers/grad.jpg',
-          rating: 4,
+          rating: 5,
           year: '2007',
           likes: '3 Gostos',
           description: 'La La La-La... esse sample do Daft Punk é simplesmente perfeito. Kanye pegou num som eletrónico francês e transformou num hino de superação e ego. Um dos maiores bangers da carreira dele e um dos mais importantes do hip-hop dos anos 2000.',
