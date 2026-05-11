@@ -2,6 +2,8 @@
 
 https://github.com/2024152576/projeto_cm_grupo13_pl1/
 
+https://www.figma.com/design/bOwfVptOoBbDYNKkJziFw4/Decibel?node-id=0-1&t=CzxCQDy1XlNeMd8Q-1
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
