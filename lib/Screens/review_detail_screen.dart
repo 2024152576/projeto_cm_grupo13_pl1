@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'user_profile_screen.dart';
+import '../services/lastfm_service.dart';
+import 'music_page.dart';
 
 class ReviewDetailScreen extends StatelessWidget {
   final String userName;
@@ -112,12 +114,37 @@ class ReviewDetailScreen extends StatelessWidget {
                           children: [
                             Row(
                               children: [
-                                Text(
-                                  songTitle,
-                                  style: const TextStyle(
+                                GestureDetector(
+                                  onTap: () async {
+                                    try {
+                                      final music = await LastFmService().fetchTrack(
+                                        artist: artist,
+                                        track: songTitle,
+                                      );
+
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => MusicPage(
+                                            music: music,
+                                          ),
+                                        ),
+                                      );
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Erro: $e'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Text(
+                                    songTitle,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
-                                      fontWeight: FontWeight.bold
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -157,13 +184,38 @@ class ReviewDetailScreen extends StatelessWidget {
                         ),
                       ),
 
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: AssetImage(albumImagePath),
-                            fit: BoxFit.cover,
+                      GestureDetector(
+                        onTap: () async {
+                          try {
+                            final music = await LastFmService().fetchTrack(
+                              artist: artist,
+                              track: songTitle,
+                            );
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MusicPage(
+                                  music: music,
+                                ),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro: $e'),
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage(albumImagePath),
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),

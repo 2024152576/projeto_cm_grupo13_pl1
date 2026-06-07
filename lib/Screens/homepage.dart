@@ -3,6 +3,9 @@ import 'playlist_detail_screen.dart';
 import 'create_playlist_screen.dart';
 import 'review_detail_screen.dart';
 import 'add_music_screen.dart';
+import 'package:projeto_cm_grupo13_pl1/models/music.dart';
+import 'package:projeto_cm_grupo13_pl1/services/lastFM_service.dart';
+import 'package:projeto_cm_grupo13_pl1/Screens/music_page.dart';
 
 class MainFeedScreen extends StatefulWidget {
   const MainFeedScreen({super.key});
@@ -13,6 +16,14 @@ class MainFeedScreen extends StatefulWidget {
 
 class _MainFeedScreenState extends State<MainFeedScreen> {
   int _bottomNavIndex = 0;
+
+  final LastFmService _lastFmService = LastFmService();
+
+  final TextEditingController _searchController =
+  TextEditingController();
+
+  List<Music> _results = [];
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -153,22 +164,131 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
         child: Column(
           children: [
             const SizedBox(height: 20),
+
             TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
               style: const TextStyle(color: Colors.white),
+
+              onSubmitted: (value) {
+                _search(value);
+              },
+
               decoration: InputDecoration(
                 hintText: 'Pesquisa',
-                hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                hintStyle: const TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.grey,
+                ),
                 filled: true,
                 fillColor: const Color(0xFF323232),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
+
             const SizedBox(height: 30),
+
             Expanded(
-              child: GridView.count(
-                crossAxisCount: 2, crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 1.1,
-                children: [ _buildGenreCard('Hip-Hop'), _buildGenreCard('Rap'), _buildGenreCard('R&B'), _buildGenreCard('Rock') ],
+              child: _isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(),
+              )
+                  : _results.isEmpty
+                  ? const Center(
+                child: Text(
+                  'Pesquise uma música',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 16,
+                  ),
+                ),
+              )
+                  : ListView.builder(
+                itemCount: _results.length,
+                itemBuilder: (context, index) {
+                  final music = _results[index];
+
+                  return Card(
+                    color: const Color(0xFF323232),
+                    margin: const EdgeInsets.only(
+                      bottom: 10,
+                    ),
+                    child: ListTile(
+                      leading: music.imageUrl.isNotEmpty
+                          ? ClipRRect(
+                        borderRadius:
+                        BorderRadius.circular(8),
+                        child: Image.network(
+                          music.imageUrl,
+                          width: 55,
+                          height: 55,
+                          fit: BoxFit.cover,
+
+                          cacheWidth: 110,
+                          cacheHeight: 110,
+
+                          filterQuality: FilterQuality.low,
+
+                          errorBuilder: (
+                              context,
+                              error,
+                              stackTrace,
+                              ) {
+                            return const Icon(
+                              Icons.music_note,
+                              color: Colors.white,
+                              size: 40,
+                            );
+                          },
+                        ),
+                      )
+                          : const Icon(
+                        Icons.music_note,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+
+                      title: Text(
+                        music.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      subtitle: Text(
+                        music.artist,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                        ),
+                      ),
+
+                      trailing: const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.grey,
+                        size: 16,
+                      ),
+
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MusicPage(
+                              music: music,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -324,4 +444,33 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   Widget _buildBottomIcon(IconData icon, int idx) => IconButton(icon: Icon(icon), color: _bottomNavIndex == idx ? const Color(0xFFFF8282) : Colors.grey, onPressed: () => setState(() => _bottomNavIndex = idx));
 
   Widget _buildPlaceholderScreen() => const Center(child: Text('Em breve...', style: TextStyle(color: Colors.white)));
+
+
+  Future<void> _search(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _results = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final results =
+      await _lastFmService.searchTracks(query);
+
+      setState(() {
+        _results = results;
+      });
+    } catch (e) {
+      print(e);
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
 }
