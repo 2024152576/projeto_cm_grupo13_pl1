@@ -110,7 +110,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               onPressed: () => Navigator.pop(context),
             ),
             title: Text(
-              displayName,
+              'Perfil',
               style: const TextStyle(
                 color: Color(0xFFF3E3B6),
                 fontSize: 24,
