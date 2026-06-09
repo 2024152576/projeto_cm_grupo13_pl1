@@ -6,6 +6,26 @@ class LastFmService {
   static const String _apiKey = '62d2310a77a7b00387f2dd7ebe4353ab';
   static const String _baseUrl = 'https://ws.audioscrobbler.com/2.0/';
 
+  bool isValidLastFmImage(String url) {
+    if (url.isEmpty) return false;
+    if (url.endsWith('/34s.png')) return false;
+    // Last.fm default placeholders (not real artwork)
+    if (url.contains('2a96bdc') || url.contains('2a96cbd')) return false;
+    return true;
+  }
+
+  String _pickBestLastFmImage(dynamic images, {bool preferThumbnail = false}) {
+    if (images is! List || images.isEmpty) return '';
+
+    final sizeOrder = preferThumbnail ? [2, 1, 3, 0, 4] : [4, 3, 2, 1, 0];
+    for (final sizeIndex in sizeOrder) {
+      if (images.length <= sizeIndex) continue;
+      final url = images[sizeIndex]['#text']?.toString() ?? '';
+      if (isValidLastFmImage(url)) return url;
+    }
+    return '';
+  }
+
   Future<Music> fetchTrack({
     required String track,
     required String artist,
@@ -33,13 +53,14 @@ class LastFmService {
     return Music.fromJson(data['track']);
   }
 
+  /// Fast artist search — names and listeners only; images resolved separately.
   Future<List<Map<String, String>>> searchArtists(String query) async {
     final uri = Uri.parse(
       '$_baseUrl?method=artist.search'
           '&artist=${Uri.encodeComponent(query)}'
           '&api_key=$_apiKey'
           '&format=json'
-          '&limit=20',
+          '&limit=10',
     );
 
     final response = await http.get(uri);
@@ -55,17 +76,18 @@ class LastFmService {
 
     final artists = rawArtists is List ? rawArtists : [rawArtists];
 
-    return artists.map<Map<String, String>>((artist) {
-      String image = '';
-      if (artist['image'] != null && artist['image'] is List && (artist['image'] as List).isNotEmpty) {
-        image = artist['image'].last['#text'] ?? '';
-      }
-      return {
-        'name': artist['name']?.toString() ?? '',
-        'image': image,
-        'listeners': artist['listeners']?.toString() ?? '0',
-      };
-    }).where((artist) => artist['name']!.isNotEmpty).toList();
+    return artists
+        .map<Map<String, String>>((artist) {
+          final name = artist['name']?.toString() ?? '';
+          return {
+            'name': name,
+            'mbid': artist['mbid']?.toString() ?? '',
+            'image': '',
+            'listeners': artist['listeners']?.toString() ?? '0',
+          };
+        })
+        .where((artist) => artist['name']!.isNotEmpty)
+        .toList();
   }
 
   Future<List<Music>> searchTracks(String query) async {
@@ -152,10 +174,7 @@ class LastFmService {
       final response = await http.get(uri);
       final data = jsonDecode(response.body);
 
-      final artistImages = data['artist']?['image'];
-      if (artistImages != null && artistImages is List && artistImages.isNotEmpty) {
-        return artistImages.last['#text'] ?? '';
-      }
+      return _pickBestLastFmImage(data['artist']?['image']);
     } catch (_) {}
     return '';
   }
@@ -175,10 +194,7 @@ class LastFmService {
       final albums = data['topalbums']?['album'] as List?;
       if (albums != null) {
         return albums.map<Map<String, String>>((album) {
-          String image = '';
-          if (album['image'] != null && (album['image'] as List).isNotEmpty) {
-            image = album['image'].last['#text'] ?? '';
-          }
+          final image = _pickBestLastFmImage(album['image'], preferThumbnail: true);
           return {
             'name': album['name'] ?? '',
             'image': image,
@@ -204,23 +220,20 @@ class LastFmService {
       final data = jsonDecode(response.body);
       final tracks = data['toptracks']?['track'] as List?;
       if (tracks != null) {
-        final artistImage = await getArtistImage(artist);
-        return tracks.map<Music>((track) {
-          String image = '';
-          if (track['image'] != null && (track['image'] as List).isNotEmpty) {
-            image = track['image'].last['#text'] ?? '';
-          }
-          if (image.isEmpty) image = artistImage;
-
+        final results = await Future.wait(tracks.map((track) async {
+          final name = track['name'] ?? '';
+          // Tenta obter a capa do álbum para a música, senão usa a do artista
+          final imageUrl = await getTrackImage(track: name, artist: artist);
           return Music(
-            id: track['mbid'] ?? '${artist}_${track['name']}',
-            name: track['name'] ?? '',
+            id: track['mbid'] ?? '${artist}_$name',
+            name: name,
             artist: artist,
             album: '',
             listeners: track['listeners'] ?? '0',
-            imageUrl: image,
+            imageUrl: imageUrl,
           );
-        }).toList();
+        }));
+        return results;
       }
     }
     return [];
