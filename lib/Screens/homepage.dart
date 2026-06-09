@@ -30,11 +30,14 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   final LastFmService _lastFmService = LastFmService();
   final AuthService _authService = AuthService();
   final DatabaseService _databaseService = DatabaseService();
+  
 
   final TextEditingController _searchController =
   TextEditingController();
 
   List<Music> _results = [];
+  List<UserModel> _userResults = [];
+  bool _isSearchingUsers = false;
   bool _isLoading = false;
   UserModel? _currentUser;
   StreamSubscription<UserModel?>? _userSub;
@@ -340,26 +343,17 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-
+            
+            // Barra de Pesquisa
             TextField(
               controller: _searchController,
               textInputAction: TextInputAction.search,
               style: const TextStyle(color: Colors.white),
-
-              onSubmitted: (value) {
-                _search(value);
-              },
-
+              onSubmitted: (value) => _search(value),
               decoration: InputDecoration(
-                hintText: 'Pesquisa',
-                hintStyle: const TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
-                prefixIcon: const Icon(
-                  Icons.search,
-                  color: Colors.grey,
-                ),
+                hintText: _isSearchingUsers ? 'Pesquisar utilizadores (@username, nome...)' : 'Pesquisar música',
+                hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 filled: true,
                 fillColor: const Color(0xFF323232),
                 border: OutlineInputBorder(
@@ -368,104 +362,116 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                 ),
               ),
             ),
+            
+            const SizedBox(height: 15),
 
-            const SizedBox(height: 30),
+            // Toggle Música / Utilizadores
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ChoiceChip(
+                  label: const Text('Músicas', style: TextStyle(fontWeight: FontWeight.bold)),
+                  selected: !_isSearchingUsers,
+                  selectedColor: const Color(0xFFFF8282),
+                  labelStyle: TextStyle(color: !_isSearchingUsers ? Colors.white : Colors.grey),
+                  backgroundColor: const Color(0xFF323232),
+                  onSelected: (selected) {
+                    setState(() {
+                      _isSearchingUsers = false;
+                      if (_searchController.text.isNotEmpty) _search(_searchController.text);
+                    });
+                  },
+                ),
+                const SizedBox(width: 15),
+                ChoiceChip(
+                  label: const Text('Utilizadores', style: TextStyle(fontWeight: FontWeight.bold)),
+                  selected: _isSearchingUsers,
+                  selectedColor: const Color(0xFFFF8282),
+                  labelStyle: TextStyle(color: _isSearchingUsers ? Colors.white : Colors.grey),
+                  backgroundColor: const Color(0xFF323232),
+                  onSelected: (selected) {
+                    setState(() {
+                      _isSearchingUsers = true;
+                      if (_searchController.text.isNotEmpty) _search(_searchController.text);
+                    });
+                  },
+                ),
+              ],
+            ),
 
+            const SizedBox(height: 20),
+
+            // Lista de Resultados
             Expanded(
               child: _isLoading
-                  ? const Center(
-                child: CircularProgressIndicator(),
-              )
-                  : _results.isEmpty
-                  ? const Center(
-                child: Text(
-                  'Pesquise uma música',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16,
-                  ),
-                ),
-              )
-                  : ListView.builder(
-                itemCount: _results.length,
-                itemBuilder: (context, index) {
-                  final music = _results[index];
-
-                  return Card(
-                    color: const Color(0xFF323232),
-                    margin: const EdgeInsets.only(
-                      bottom: 10,
-                    ),
-                    child: ListTile(
-                      leading: music.imageUrl.isNotEmpty
-                          ? ClipRRect(
-                        borderRadius:
-                        BorderRadius.circular(8),
-                        child: Image.network(
-                          music.imageUrl,
-                          width: 55,
-                          height: 55,
-                          fit: BoxFit.cover,
-
-                          cacheWidth: 110,
-                          cacheHeight: 110,
-
-                          filterQuality: FilterQuality.low,
-
-                          errorBuilder: (
-                              context,
-                              error,
-                              stackTrace,
-                              ) {
-                            return const Icon(
-                              Icons.music_note,
-                              color: Colors.white,
-                              size: 40,
-                            );
+                  ? const Center(child: CircularProgressIndicator())
+                  : (!_isSearchingUsers && _results.isEmpty) || (_isSearchingUsers && _userResults.isEmpty)
+                      ? Center(
+                          child: Text(
+                            _isSearchingUsers ? 'Nenhum utilizador encontrado' : 'Pesquise uma música',
+                            style: const TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _isSearchingUsers ? _userResults.length : _results.length,
+                          itemBuilder: (context, index) {
+                            
+                            // SE ESTIVERMOS A MOSTRAR UTILIZADORES
+                            if (_isSearchingUsers) {
+                              final user = _userResults[index];
+                              return Card(
+                                color: const Color(0xFF323232),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                child: ListTile(
+                                  leading: _buildUserAvatar(user.firstName, radius: 25),
+                                  title: Text(
+                                    user.fullName,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    user.username,
+                                    style: const TextStyle(color: Color(0xFFFF8282)),
+                                  ),
+                                  trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                                  onTap: () {
+                                    // TODO: Navegar para o ecrã de Perfil do Utilizador clicado
+                                    // Navigator.push(context, MaterialPageRoute(builder: (_) => OutroPerfilScreen(userId: user.userId)));
+                                    print('Clicou no utilizador: ${user.username}');
+                                  },
+                                ),
+                              );
+                            } 
+                            
+                            // SE ESTIVERMOS A MOSTRAR MÚSICAS
+                            else {
+                              final music = _results[index];
+                              return Card(
+                                color: const Color(0xFF323232),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                child: ListTile(
+                                  leading: music.imageUrl.isNotEmpty
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            music.imageUrl, width: 55, height: 55, fit: BoxFit.cover,
+                                            errorBuilder: (c, e, s) => const Icon(Icons.music_note, color: Colors.white, size: 40),
+                                          ),
+                                        )
+                                      : const Icon(Icons.music_note, color: Colors.white, size: 40),
+                                  title: Text(
+                                    music.name,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(music.artist, style: const TextStyle(color: Colors.grey)),
+                                  trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => MusicPage(music: music)));
+                                  },
+                                ),
+                              );
+                            }
                           },
                         ),
-                      )
-                          : const Icon(
-                        Icons.music_note,
-                        color: Colors.white,
-                        size: 40,
-                      ),
-
-                      title: Text(
-                        music.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      subtitle: Text(
-                        music.artist,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-
-                      trailing: const Icon(
-                        Icons.arrow_forward_ios,
-                        color: Colors.grey,
-                        size: 16,
-                      ),
-
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MusicPage(
-                              music: music,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
             ),
           ],
         ),
@@ -965,6 +971,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     if (query.trim().isEmpty) {
       setState(() {
         _results = [];
+        _userResults = [];
       });
       return;
     }
@@ -974,12 +981,19 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     });
 
     try {
-      final results =
-      await _lastFmService.searchTracks(query);
-
-      setState(() {
-        _results = results;
-      });
+      if (_isSearchingUsers) {
+        // Pesquisa Utilizadores
+        final users = await _databaseService.pesquisarUtilizadores(query);
+        setState(() {
+          _userResults = users;
+        });
+      } else {
+        // Pesquisa Músicas
+        final results = await _lastFmService.searchTracks(query);
+        setState(() {
+          _results = results;
+        });
+      }
     } catch (e) {
       print(e);
     }

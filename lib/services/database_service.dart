@@ -157,4 +157,26 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  // --- PESQUISA DE UTILIZADORES ---
+  Future<List<UserModel>> pesquisarUtilizadores(String query) async {
+    try {
+      // Vai buscar todos os utilizadores (aceitável para projetos pequenos)
+      final snapshot = await _db.collection('users').get();
+      final users = snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
+
+      // Limpa a query para facilitar a pesquisa (tira espaços e o @ se o utilizador o colocar)
+      final queryLower = query.toLowerCase().replaceAll('@', '').trim();
+      
+      // Filtra os utilizadores que contenham o texto no username, primeiro ou último nome
+      return users.where((u) {
+        return u.username.toLowerCase().contains(queryLower) ||
+               u.firstName.toLowerCase().contains(queryLower) ||
+               u.lastName.toLowerCase().contains(queryLower);
+      }).toList();
+    } catch (e) {
+      print('Erro a pesquisar utilizadores: $e');
+      return [];
+    }
+  }
 }
