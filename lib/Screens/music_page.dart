@@ -269,7 +269,7 @@ class _MusicPageState extends State<MusicPage> {
                 child: TabBarView(
                   children: [
                     _buildCommunityTab(),
-                    const Center(child: Text("Atividade dos amigos em breve", style: TextStyle(color: Colors.white70))),
+                    _buildFriendsTab(),
                   ],
                 ),
               ),
@@ -295,6 +295,31 @@ class _MusicPageState extends State<MusicPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildReviewListItem(ReviewModel r) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(r.userName, style: const TextStyle(color: Color(0xFFF5D98E), fontWeight: FontWeight.bold)),
+              Row(
+                children: List.generate(5, (i) => Icon(i < r.rating ? Icons.star : Icons.star_border, color: const Color(0xFFFF7D7D), size: 14)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(DateFormat('dd MMM yyyy').format(r.timestamp), style: const TextStyle(color: Colors.white38, fontSize: 11)),
+          const SizedBox(height: 10),
+          Text(r.fullReviewText, style: const TextStyle(color: Colors.white, fontSize: 14)),
+        ],
       ),
     );
   }
@@ -341,31 +366,66 @@ class _MusicPageState extends State<MusicPage> {
                 padding: const EdgeInsets.all(20),
                 itemCount: reviews.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 16),
-                itemBuilder: (context, index) {
-                  final r = reviews[index];
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(r.userName, style: const TextStyle(color: Color(0xFFF5D98E), fontWeight: FontWeight.bold)),
-                            Row(
-                              children: List.generate(5, (i) => Icon(i < r.rating ? Icons.star : Icons.star_border, color: const Color(0xFFFF7D7D), size: 14)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(DateFormat('dd MMM yyyy').format(r.timestamp), style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                        const SizedBox(height: 10),
-                        Text(r.fullReviewText, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                      ],
-                    ),
-                  );
+                itemBuilder: (context, index) => _buildReviewListItem(reviews[index]),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFriendsTab() {
+    if (_currentUser == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 10, 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Reviews de Amigos", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              DropdownButton<String>(
+                value: _ordemAtual,
+                dropdownColor: const Color(0xFF263D4A),
+                icon: const Icon(Icons.sort, color: Color(0xFFF5D98E)),
+                underline: const SizedBox(),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                items: ['Recentes', 'Antigas', 'Melhor Avaliação', 'Pior Avaliação']
+                    .map((String value) => DropdownMenuItem<String>(value: value, child: Text(value)))
+                    .toList(),
+                onChanged: (newValue) {
+                  setState(() => _ordemAtual = newValue!);
                 },
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder<List<ReviewModel>>(
+            stream: _databaseService.obterReviewsMusica(widget.music.id),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              
+              final allReviews = snapshot.data ?? [];
+              final friendsReviews = allReviews.where((r) => _currentUser!.following.contains(r.userId)).toList();
+
+              if (friendsReviews.isEmpty) {
+                return const Center(child: Text("Nenhum amigo fez review desta música.", style: TextStyle(color: Colors.white54)));
+              }
+
+              final reviews = _ordenarReviews(friendsReviews);
+
+              return ListView.separated(
+                padding: const EdgeInsets.all(20),
+                itemCount: reviews.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 16),
+                itemBuilder: (context, index) => _buildReviewListItem(reviews[index]),
               );
             },
           ),
