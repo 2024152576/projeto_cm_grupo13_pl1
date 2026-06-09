@@ -1,10 +1,24 @@
+/// Classe que representa o modelo de dados de um utilizador no sistema.
+/// 
+/// Mapeia as propriedades da entidade utilizador e fornece métodos de conversão
+/// para persistência e leitura na base de dados NoSQL do Cloud Firestore.
 class UserModel {
+  /// Identificador único do utilizador gerado pelo Firebase Authentication ([uid]).
   final String userId; 
+
+  /// Primeiro nome do utilizador.
   final String firstName;
+
+  /// Apelido / Último nome do utilizador.
   final String lastName;
+
+  /// Nome de utilizador único da rede social (ex: @rodrigo).
   final String username;
+
+  /// Endereço de correio eletrónico associado à conta.
   final String email;
 
+  /// Construtor padrão da classe [UserModel].
   UserModel({
     required this.userId, 
     required this.firstName,
@@ -13,7 +27,11 @@ class UserModel {
     required this.email,
   });
 
-  // Converte os dados do utilizador para um Mapa (JSON) para enviar para o Firestore
+  /// Converte a instância atual de [UserModel] para um mapa [Map<String, dynamic>].
+  /// 
+  /// Garante o formato chave-valor (JSON-like) necessário para submeter ao Firestore.
+  /// Inclui a formatação automática do prefixo '@' no [username] e inicializa
+  /// as métricas dinâmicas de contagem a zero.
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -26,7 +44,10 @@ class UserModel {
     };
   }
 
-  // Cria um UserModel a partir de um documento do Firestore
+  /// Constrói uma nova instância de [UserModel] a partir de um mapa de dados originário do Firestore.
+  /// 
+  /// Utiliza operadores de coalescência nula (`??`) para prevenir erros em tempo de execução
+  /// caso algum campo na base de dados se encontre nulo.
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       userId: map['userId'] ?? '', 

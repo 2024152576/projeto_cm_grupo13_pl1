@@ -1,12 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Classe que modela uma lista de reprodução (Playlist) personalizada criada pelo utilizador.
 class PlaylistModel {
+  /// ID único gerado para identificar a lista de reprodução.
   final String playlistId;
+  
+  /// Referência ao criador da playlist ([userId]).
   final String userId;
+  
+  /// Título atribuído à playlist pelo utilizador.
   final String name;
+  
+  /// Data de criação da playlist.
   final DateTime timestamp;
-  final List<dynamic> songs; // Lista que guardará os mapas ou IDs das músicas
+  
+  /// Lista dinâmica contendo os identificadores das músicas que pertencem a esta playlist.
+  final List<dynamic> songs;
 
+  /// Construtor padrão da classe [PlaylistModel].
   PlaylistModel({
     required this.playlistId,
     required this.userId,
@@ -15,6 +26,7 @@ class PlaylistModel {
     this.songs = const [],
   });
 
+  /// Transforma as propriedades do objeto num mapa chave-valor para persistência.
   Map<String, dynamic> toMap() {
     return {
       'playlistId': playlistId,
@@ -25,6 +37,7 @@ class PlaylistModel {
     };
   }
 
+  /// Reconstrói uma playlist a partir de estruturas [Map] extraídas da base de dados remota.
   factory PlaylistModel.fromMap(Map<String, dynamic> map) {
     return PlaylistModel(
       playlistId: map['playlistId'] ?? '',
