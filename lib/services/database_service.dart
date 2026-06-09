@@ -78,6 +78,52 @@ class DatabaseService {
     });
   }
 
+  // Favoritar Artista
+  Future<void> alternarFavoritoArtista(String userId, Map<String, String> artistData) async {
+    final userDoc = _db.collection('users').doc(userId);
+    final doc = await userDoc.get();
+    if (!doc.exists) return;
+
+    final user = UserModel.fromMap(doc.data()!);
+    List<Map<String, String>> favorites = List.from(user.favoriteArtists);
+
+    final index = favorites.indexWhere((a) => a['name'] == artistData['name']);
+
+    if (index >= 0) {
+      favorites.removeAt(index);
+    } else {
+      if (favorites.length >= 3) {
+        throw Exception('Só podes ter 3 artistas favoritos.');
+      }
+      favorites.add(artistData);
+    }
+
+    await userDoc.update({'favoriteArtists': favorites});
+  }
+
+  // Favoritar Música
+  Future<void> alternarFavoritoMusica(String userId, Map<String, String> songData) async {
+    final userDoc = _db.collection('users').doc(userId);
+    final doc = await userDoc.get();
+    if (!doc.exists) return;
+
+    final user = UserModel.fromMap(doc.data()!);
+    List<Map<String, String>> favorites = List.from(user.favoriteSongs);
+
+    final index = favorites.indexWhere((s) => s['id'] == songData['id']);
+
+    if (index >= 0) {
+      favorites.removeAt(index);
+    } else {
+      if (favorites.length >= 3) {
+        throw Exception('Só podes ter 3 músicas favoritas.');
+      }
+      favorites.add(songData);
+    }
+
+    await userDoc.update({'favoriteSongs': favorites});
+  }
+
   // 2. Gravar uma Nova Lista (Playlist) no Firestore
   Future<void> criarPlaylist(PlaylistModel playlist) async {
     try {
