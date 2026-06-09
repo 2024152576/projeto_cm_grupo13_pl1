@@ -62,4 +62,8 @@ class AuthService {
   Future<void> logout() async {
     await _auth.signOut();
   }
+
+  bool isUserLoggedIn() {
+    return _auth.currentUser != null;
+  }
 }

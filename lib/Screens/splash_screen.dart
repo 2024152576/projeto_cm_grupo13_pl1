@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
+import 'homepage.dart';
+import '../services/auth_service.dart';
+
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -9,15 +12,26 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final AuthService _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+    Future.delayed(const Duration(seconds: 3), () {      
+      // Chamar a função do  serviço para verificar se já existe conta iniciada
+      final bool loggedIn = _authService.isUserLoggedIn();
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => loggedIn 
+                ? const MainFeedScreen()  
+                : const LoginScreen(),    
+          ),
+        );
+      }
     });
   }
 
