@@ -10,6 +10,7 @@ class UserModel {
   final List<Map<String, String>> favoriteArtists;
   final List<Map<String, String>> favoriteSongs;
   final List<String> following;
+  final List<String> likedReviews;
 
   UserModel({
     required this.userId, 
@@ -23,6 +24,7 @@ class UserModel {
     this.favoriteArtists = const [],
     this.favoriteSongs = const [],
     this.following = const [],
+    this.likedReviews = const [],
   });
 
   String get fullName {
@@ -43,6 +45,7 @@ class UserModel {
       'favoriteArtists': favoriteArtists,
       'favoriteSongs': favoriteSongs,
       'following': following,
+      'likedReviews': likedReviews,
     };
   }
 
@@ -63,6 +66,7 @@ class UserModel {
           .map((e) => e.map((key, value) => MapEntry(key, value.toString())))
           .toList(),
       following: List<String>.from(map['following'] ?? []),
+      likedReviews: List<String>.from(map['likedReviews'] ?? []),
     );
   }
 }

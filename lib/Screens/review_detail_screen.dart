@@ -1,9 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'user_profile_screen.dart';
+import '../models/user_model.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
 import '../services/lastfm_service.dart';
+import '../widgets/review_like_button.dart';
 import 'music_page.dart';
 
-class ReviewDetailScreen extends StatelessWidget {
+class ReviewDetailScreen extends StatefulWidget {
+  final String reviewId;
   final String userId;
   final String userName;
   final String date;
@@ -12,12 +19,13 @@ class ReviewDetailScreen extends StatelessWidget {
   final String artist;
   final String year;
   final int rating;
-  final String likes;
+  final int likesCount;
   final String albumImagePath;
   final String fullReviewText;
 
   const ReviewDetailScreen({
     super.key,
+    required this.reviewId,
     required this.userId,
     required this.userName,
     required this.date,
@@ -26,10 +34,74 @@ class ReviewDetailScreen extends StatelessWidget {
     required this.artist,
     required this.year,
     required this.rating,
-    required this.likes,
+    required this.likesCount,
     required this.albumImagePath,
     required this.fullReviewText,
   });
+
+  @override
+  State<ReviewDetailScreen> createState() => _ReviewDetailScreenState();
+}
+
+class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
+  final DatabaseService _databaseService = DatabaseService();
+  final AuthService _authService = AuthService();
+
+  late int _likes;
+  UserModel? _currentUser;
+  StreamSubscription<UserModel?>? _userSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _likes = widget.likesCount;
+    _loadCurrentUser();
+  }
+
+  void _loadCurrentUser() {
+    final uid = _authService.currentUser?.uid;
+    if (uid == null) return;
+
+    _userSub = _databaseService.streamUtilizador(uid).listen((user) {
+      if (mounted) setState(() => _currentUser = user);
+    });
+  }
+
+  @override
+  void dispose() {
+    _userSub?.cancel();
+    super.dispose();
+  }
+
+  bool get _isLiked => _currentUser?.likedReviews.contains(widget.reviewId) ?? false;
+
+  Future<void> _toggleLike() async {
+    final userId = _authService.currentUser?.uid;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sessão para gostares de reviews')),
+      );
+      return;
+    }
+
+    final wasLiked = _isLiked;
+    setState(() {
+      _likes += wasLiked ? -1 : 1;
+    });
+
+    try {
+      await _databaseService.alternarGostoReview(userId, widget.reviewId);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _likes += wasLiked ? 1 : -1;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gostar da review: $e')),
+        );
+      }
+    }
+  }
 
   ImageProvider _imageFromPath(String path) {
     if (path.startsWith('http')) return NetworkImage(path);
@@ -69,16 +141,15 @@ class ReviewDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => UserProfileScreen(
-                            userId: userId,
-                            userName: userName,
-                            profileImagePath: profileImagePath,
+                            userId: widget.userId,
+                            userName: widget.userName,
+                            profileImagePath: widget.profileImagePath,
                           ),
                         ),
                       );
@@ -86,16 +157,16 @@ class ReviewDetailScreen extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     child: Row(
                       children: [
-                        profileImagePath.isNotEmpty
+                        widget.profileImagePath.isNotEmpty
                             ? CircleAvatar(
                                 radius: 25,
-                                backgroundImage: _imageFromPath(profileImagePath),
+                                backgroundImage: _imageFromPath(widget.profileImagePath),
                               )
                             : CircleAvatar(
                                 radius: 25,
                                 backgroundColor: const Color(0xFFFF8282),
                                 child: Text(
-                                  userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                                  widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : '?',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -108,15 +179,15 @@ class ReviewDetailScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              userName,
+                              widget.userName,
                               style: const TextStyle(
-                                  color: Color(0xFFF3E3B6),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16
+                                color: Color(0xFFF3E3B6),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
                             ),
                             Text(
-                              date,
+                              widget.date,
                               style: const TextStyle(color: Colors.grey, fontSize: 12),
                             ),
                           ],
@@ -140,28 +211,26 @@ class ReviewDetailScreen extends StatelessWidget {
                                   onTap: () async {
                                     try {
                                       final music = await LastFmService().fetchTrack(
-                                        artist: artist,
-                                        track: songTitle,
+                                        artist: widget.artist,
+                                        track: widget.songTitle,
                                       );
 
+                                      if (!context.mounted) return;
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => MusicPage(
-                                            music: music,
-                                          ),
+                                          builder: (_) => MusicPage(music: music),
                                         ),
                                       );
                                     } catch (e) {
+                                      if (!context.mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Erro: $e'),
-                                        ),
+                                        SnackBar(content: Text('Erro: $e')),
                                       );
                                     }
                                   },
                                   child: Text(
-                                    songTitle,
+                                    widget.songTitle,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
@@ -171,36 +240,31 @@ class ReviewDetailScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 10),
                                 Text(
-                                  year,
+                                  widget.year,
                                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              artist,
+                              widget.artist,
                               style: const TextStyle(color: Colors.grey, fontSize: 14),
                             ),
                             const SizedBox(height: 10),
                             Row(
                               children: List.generate(5, (index) {
                                 return Icon(
-                                  index < rating ? Icons.star : Icons.star_border,
+                                  index < widget.rating ? Icons.star : Icons.star_border,
                                   color: const Color(0xFFFF8282),
                                   size: 24,
                                 );
                               }),
                             ),
                             const SizedBox(height: 15),
-                            Row(
-                              children: [
-                                const Icon(Icons.favorite_border, color: Colors.grey, size: 20),
-                                const SizedBox(width: 6),
-                                Text(
-                                  likes,
-                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                                ),
-                              ],
+                            ReviewLikeButton(
+                              likes: _likes,
+                              isLiked: _isLiked,
+                              onTap: _toggleLike,
                             ),
                           ],
                         ),
@@ -210,23 +274,21 @@ class ReviewDetailScreen extends StatelessWidget {
                         onTap: () async {
                           try {
                             final music = await LastFmService().fetchTrack(
-                              artist: artist,
-                              track: songTitle,
+                              artist: widget.artist,
+                              track: widget.songTitle,
                             );
 
+                            if (!context.mounted) return;
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => MusicPage(
-                                  music: music,
-                                ),
+                                builder: (_) => MusicPage(music: music),
                               ),
                             );
                           } catch (e) {
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Erro: $e'),
-                              ),
+                              SnackBar(content: Text('Erro: $e')),
                             );
                           }
                         },
@@ -235,7 +297,7 @@ class ReviewDetailScreen extends StatelessWidget {
                           height: 120,
                           decoration: BoxDecoration(
                             image: DecorationImage(
-                              image: _imageFromPath(albumImagePath),
+                              image: _imageFromPath(widget.albumImagePath),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -252,7 +314,7 @@ class ReviewDetailScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Text(
-                fullReviewText,
+                widget.fullReviewText,
                 style: const TextStyle(
                   color: Colors.white,
                   height: 1.5,

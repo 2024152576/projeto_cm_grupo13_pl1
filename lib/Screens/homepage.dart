@@ -18,6 +18,7 @@ import 'package:projeto_cm_grupo13_pl1/Screens/music_page.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/artist_page.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/user_profile_screen.dart';
 import 'package:projeto_cm_grupo13_pl1/models/playlist_model.dart';
+import 'package:projeto_cm_grupo13_pl1/widgets/review_like_button.dart';
 
 enum _SearchMode { music, users, artists }
 
@@ -88,6 +89,55 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
       'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
     ];
     return '${dateTime.day} de ${meses[dateTime.month - 1]}';
+  }
+
+  bool _isReviewLiked(String reviewId) {
+    return _currentUser?.likedReviews.contains(reviewId) ?? false;
+  }
+
+  Future<void> _toggleReviewLike(String reviewId) async {
+    final userId = _authService.currentUser?.uid;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sessão para gostares de reviews')),
+      );
+      return;
+    }
+
+    try {
+      await _databaseService.alternarGostoReview(userId, reviewId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gostar da review: $e')),
+        );
+      }
+    }
+  }
+
+  void _openReviewDetail(ReviewModel review) {
+    final songTitle = review.songTitle.isNotEmpty ? review.songTitle : 'Música';
+    final artist = review.artist.isNotEmpty ? review.artist : 'Artista desconhecido';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReviewDetailScreen(
+          reviewId: review.reviewId,
+          userId: review.userId,
+          userName: review.userName,
+          date: _formatarDataReview(review.timestamp),
+          profileImagePath: '',
+          songTitle: songTitle,
+          artist: artist,
+          year: review.timestamp.year.toString(),
+          rating: review.rating,
+          likesCount: review.likes,
+          albumImagePath: review.albumImageUrl,
+          fullReviewText: review.fullReviewText,
+        ),
+      ),
+    );
   }
 
   String _formatarMesAno(DateTime dateTime) {
@@ -854,24 +904,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                       Text(' ${review.rating}', style: const TextStyle(color: Colors.white)),
                     ],
                   ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ReviewDetailScreen(
-                        userId: review.userId,
-                        userName: review.userName,
-                        date: _formatarDataReview(review.timestamp),
-                        profileImagePath: '',
-                        songTitle: review.songTitle,
-                        artist: review.artist,
-                        year: review.timestamp.year.toString(),
-                        rating: review.rating,
-                        likes: '${review.likes} Gostos',
-                        albumImagePath: review.albumImageUrl,
-                        fullReviewText: review.fullReviewText,
-                      ),
-                    ),
-                  ),
+                  onTap: () => _openReviewDetail(review),
                 );
               },
             );
@@ -932,103 +965,96 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     final songTitle = review.songTitle.isNotEmpty ? review.songTitle : 'Música';
     final artist = review.artist.isNotEmpty ? review.artist : 'Artista desconhecido';
     final date = _formatarDataReview(review.timestamp);
-    final likes = '${review.likes} ${review.likes == 1 ? 'Gosto' : 'Gostos'}';
 
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ReviewDetailScreen(
-            userId: review.userId,
-            userName: review.userName,
-            date: date,
-            profileImagePath: '',
-            songTitle: songTitle,
-            artist: artist,
-            year: review.timestamp.year.toString(),
-            rating: review.rating,
-            likes: likes,
-            albumImagePath: review.albumImageUrl,
-            fullReviewText: review.fullReviewText,
-          ),
-        ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF263D4A),
+        borderRadius: BorderRadius.circular(15),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF263D4A),
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => _openReviewDetail(review),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildUserAvatar(review.userName),
-                const SizedBox(width: 15),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Text(
-                      review.userName,
-                      style: const TextStyle(
-                        color: Color(0xFFF3E3B6),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      date,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    _buildUserAvatar(review.userName),
+                    const SizedBox(width: 15),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          review.userName,
+                          style: const TextStyle(
+                            color: Color(0xFFF3E3B6),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          date,
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                _buildAlbumCover(review.albumImageUrl),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        songTitle,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        artist,
-                        style: const TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                      Row(
-                        children: List.generate(
-                          5,
-                          (i) => Icon(
-                            i < review.rating ? Icons.star : Icons.star_border,
-                            color: const Color(0xFFFF8282),
-                            size: 20,
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _buildAlbumCover(review.albumImageUrl),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            songTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
+                          Text(
+                            artist,
+                            style: const TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                          Row(
+                            children: List.generate(
+                              5,
+                              (i) => Icon(
+                                i < review.rating ? Icons.star : Icons.star_border,
+                                color: const Color(0xFFFF8282),
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  review.fullReviewText,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.grey),
                 ),
               ],
             ),
-            const SizedBox(height: 15),
-            Text(
-              review.fullReviewText,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          ReviewLikeButton(
+            likes: review.likes,
+            isLiked: _isReviewLiked(review.reviewId),
+            onTap: () => _toggleReviewLike(review.reviewId),
+          ),
+        ],
       ),
     );
   }
@@ -1068,62 +1094,56 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     final songTitle = review.songTitle.isNotEmpty ? review.songTitle : 'Música';
     final artist = review.artist.isNotEmpty ? review.artist : 'Artista desconhecido';
 
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ReviewDetailScreen(
-            userId: review.userId,
-            userName: review.userName,
-            date: _formatarDataReview(review.timestamp),
-            profileImagePath: '',
-            songTitle: songTitle,
-            artist: artist,
-            year: review.timestamp.year.toString(),
-            rating: review.rating,
-            likes: '${review.likes} ${review.likes == 1 ? 'Gosto' : 'Gostos'}',
-            albumImagePath: review.albumImageUrl,
-            fullReviewText: review.fullReviewText,
-          ),
-        ),
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: const Color(0xFF263D4A),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: const Color(0xFF263D4A),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            _buildAlbumCover(review.albumImageUrl),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    songTitle,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(artist, style: const TextStyle(color: Colors.grey)),
-                  Row(
-                    children: List.generate(
-                      5,
-                      (i) => Icon(
-                        i < review.rating ? Icons.star : Icons.star_border,
-                        color: const Color(0xFFFF8282),
-                        size: 20,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => _openReviewDetail(review),
+            child: Row(
+              children: [
+                _buildAlbumCover(review.albumImageUrl),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        songTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+                      Text(artist, style: const TextStyle(color: Colors.grey)),
+                      Row(
+                        children: List.generate(
+                          5,
+                          (i) => Icon(
+                            i < review.rating ? Icons.star : Icons.star_border,
+                            color: const Color(0xFFFF8282),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          ReviewLikeButton(
+            likes: review.likes,
+            isLiked: _isReviewLiked(review.reviewId),
+            onTap: () => _toggleReviewLike(review.reviewId),
+          ),
+        ],
       ),
     );
   }

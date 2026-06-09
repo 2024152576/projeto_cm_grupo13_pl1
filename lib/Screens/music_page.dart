@@ -9,6 +9,7 @@ import '../services/lastFM_service.dart';
 import 'write_review.dart';
 import 'artist_page.dart';
 import 'album_page.dart';
+import '../widgets/review_like_button.dart';
 
 class MusicPage extends StatefulWidget {
   final Music music;
@@ -299,7 +300,29 @@ class _MusicPageState extends State<MusicPage> {
     );
   }
 
+  Future<void> _toggleReviewLike(String reviewId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sessão para gostares de reviews')),
+      );
+      return;
+    }
+
+    try {
+      await _databaseService.alternarGostoReview(user.uid, reviewId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gostar da review: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildReviewListItem(ReviewModel r) {
+    final isLiked = _currentUser?.likedReviews.contains(r.reviewId) ?? false;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)),
@@ -319,6 +342,12 @@ class _MusicPageState extends State<MusicPage> {
           Text(DateFormat('dd MMM yyyy').format(r.timestamp), style: const TextStyle(color: Colors.white38, fontSize: 11)),
           const SizedBox(height: 10),
           Text(r.fullReviewText, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          const SizedBox(height: 10),
+          ReviewLikeButton(
+            likes: r.likes,
+            isLiked: isLiked,
+            onTap: () => _toggleReviewLike(r.reviewId),
+          ),
         ],
       ),
     );

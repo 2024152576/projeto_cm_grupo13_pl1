@@ -280,6 +280,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => ReviewDetailScreen(
+                        reviewId: review.reviewId,
                         userId: review.userId,
                         userName: review.userName,
                         date: '${review.timestamp.day}/${review.timestamp.month}/${review.timestamp.year}',
@@ -288,7 +289,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         artist: review.artist,
                         year: review.timestamp.year.toString(),
                         rating: review.rating,
-                        likes: '${review.likes} Gostos',
+                        likesCount: review.likes,
                         albumImagePath: review.albumImageUrl,
                         fullReviewText: review.fullReviewText,
                       ),

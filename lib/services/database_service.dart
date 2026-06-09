@@ -189,6 +189,31 @@ class DatabaseService {
     });
   }
 
+  Future<void> alternarGostoReview(String userId, String reviewId) async {
+    final userDoc = _db.collection('users').doc(userId);
+    final reviewDoc = _db.collection('reviews').doc(reviewId);
+
+    await _db.runTransaction((transaction) async {
+      final userSnap = await transaction.get(userDoc);
+      final reviewSnap = await transaction.get(reviewDoc);
+
+      if (!userSnap.exists || !reviewSnap.exists) return;
+
+      final user = UserModel.fromMap(userSnap.data()!);
+      final likedReviews = List<String>.from(user.likedReviews);
+
+      if (likedReviews.contains(reviewId)) {
+        likedReviews.remove(reviewId);
+        transaction.update(userDoc, {'likedReviews': likedReviews});
+        transaction.update(reviewDoc, {'likes': FieldValue.increment(-1)});
+      } else {
+        likedReviews.add(reviewId);
+        transaction.update(userDoc, {'likedReviews': likedReviews});
+        transaction.update(reviewDoc, {'likes': FieldValue.increment(1)});
+      }
+    });
+  }
+
   Future<List<UserModel>> obterSeguidos(List<String> followingIds) async {
     if (followingIds.isEmpty) return [];
     
