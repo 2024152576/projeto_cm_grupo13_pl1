@@ -5,15 +5,19 @@ import '../models/review_model.dart';
 import '../services/database_service.dart';
 
 class WriteReviewScreen extends StatefulWidget {
+  final String songId;
   final String songTitle;
   final String artist;
   final String albumImagePath;
+  final ReviewModel? reviewExistente; // Nova propriedade
 
   const WriteReviewScreen({
     super.key,
+    required this.songId,
     required this.songTitle,
     required this.artist,
     required this.albumImagePath,
+    this.reviewExistente,
   });
 
   @override
@@ -21,10 +25,20 @@ class WriteReviewScreen extends StatefulWidget {
 }
 
 class _WriteReviewScreenState extends State<WriteReviewScreen> {
-  int _rating = 0;
-  final _reviewTextController = TextEditingController();
+  late int _rating;
+  late TextEditingController _reviewTextController;
   final DatabaseService _databaseService = DatabaseService();
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Se existir uma review, carrega os dados
+    _rating = widget.reviewExistente?.rating ?? 0;
+    _reviewTextController = TextEditingController(
+      text: widget.reviewExistente?.fullReviewText ?? '',
+    );
+  }
 
   @override
   void dispose() {
@@ -45,36 +59,34 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. Obter o utilizador atual autenticado
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Utilizador não autenticado.');
 
-      // 2. Procurar o nome do utilizador no Firestore para associar à Review
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       final firstName = userDoc.data()?['firstName'] ?? 'Utilizador';
 
-      // 3. Gerar um ID único para a review
-      final reviewId = FirebaseFirestore.instance.collection('reviews').doc().id;
+      // Se estivermos a editar, usamos o mesmo ID. Caso contrário, criamos um novo.
+      final reviewId = widget.reviewExistente?.reviewId ?? 
+                       FirebaseFirestore.instance.collection('reviews').doc().id;
 
-      // 4. Construir o Modelo
       final novaReview = ReviewModel(
         reviewId: reviewId,
         userId: user.uid,
         userName: firstName,
-        songTitle: widget.songTitle,
-        artist: widget.artist,
-        albumImagePath: widget.albumImagePath,
+        songId: widget.songId,
         rating: _rating,
         fullReviewText: _reviewTextController.text.trim(),
         timestamp: DateTime.now(),
       );
 
-      // 5. Enviar para o DatabaseService
       await _databaseService.enviarReview(novaReview);
 
       if (mounted) {
-        _mostrarMensagem('Review publicada com sucesso!', sucesso: true);
-        Navigator.popUntil(context, (route) => route.isFirst);
+        _mostrarMensagem(
+          widget.reviewExistente != null ? 'Review atualizada!' : 'Review publicada!',
+          sucesso: true,
+        );
+        Navigator.pop(context, true); // Retorna true para indicar que houve alteração
       }
     } catch (e) {
       if (mounted) _mostrarMensagem('Erro ao enviar review: $e');
@@ -91,6 +103,13 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider albumImage;
+    if (widget.albumImagePath.startsWith('http')) {
+      albumImage = NetworkImage(widget.albumImagePath);
+    } else {
+      albumImage = AssetImage(widget.albumImagePath);
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF1E3746),
       appBar: AppBar(
@@ -115,7 +134,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   image: DecorationImage(
-                    image: AssetImage(widget.albumImagePath),
+                    image: albumImage,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -177,7 +196,10 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                 ),
                 child: _isSubmitting
                     ? const CircularProgressIndicator(color: Color(0xFFF3E3B6))
-                    : const Text('Enviar Review', style: TextStyle(color: Color(0xFFF3E3B6), fontSize: 18, fontWeight: FontWeight.bold)),
+                    : Text(
+                        widget.reviewExistente != null ? 'Atualizar Review' : 'Enviar Review',
+                        style: const TextStyle(color: Color(0xFFF3E3B6), fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
           ],

@@ -1,4 +1,5 @@
 class Music {
+  final String id;
   final String name;
   final String artist;
   final String album;
@@ -6,6 +7,7 @@ class Music {
   final String imageUrl;
 
   Music({
+    required this.id,
     required this.name,
     required this.artist,
     required this.album,
@@ -23,6 +25,7 @@ class Music {
     }
 
     return Music(
+      id: json['mbid'] ?? '${json['artist']?['name'] ?? json['artist']?.toString() ?? ''}_${json['name'] ?? ''}',
       name: json['name'] ?? '',
       artist: json['artist']?['name'] ??
           json['artist']?.toString() ??

@@ -60,14 +60,19 @@ class LastFmService {
 
     final musics = await Future.wait(
       tracks.map((track) async {
+        final String trackName = track['name'] ?? '';
+        final String artistName = track['artist'] ?? '';
+        final String mbid = track['mbid'] ?? '';
+
         final imageUrl = await getTrackImage(
-          track: track['name'] ?? '',
-          artist: track['artist'] ?? '',
+          track: trackName,
+          artist: artistName,
         );
 
         return Music(
-          name: track['name'] ?? '',
-          artist: track['artist'] ?? '',
+          id: mbid.isNotEmpty ? mbid : '${artistName}_$trackName',
+          name: trackName,
+          artist: artistName,
           album: '',
           listeners: track['listeners'] ?? '0',
           imageUrl: imageUrl,
@@ -136,4 +141,3 @@ class LastFmService {
     return '';
   }
 }
-

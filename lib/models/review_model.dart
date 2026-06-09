@@ -4,9 +4,7 @@ class ReviewModel {
   final String reviewId;
   final String userId;
   final String userName;
-  final String songTitle;
-  final String artist;
-  final String albumImagePath;
+  final String songId;
   final int rating;
   final String fullReviewText;
   final DateTime timestamp;
@@ -16,9 +14,7 @@ class ReviewModel {
     required this.reviewId,
     required this.userId,
     required this.userName,
-    required this.songTitle,
-    required this.artist,
-    required this.albumImagePath,
+    required this.songId,
     required this.rating,
     required this.fullReviewText,
     required this.timestamp,
@@ -31,25 +27,21 @@ class ReviewModel {
       'reviewId': reviewId,
       'userId': userId,
       'userName': userName,
-      'songTitle': songTitle,
-      'artist': artist,
-      'albumImagePath': albumImagePath,
+      'songId': songId,
       'rating': rating,
       'fullReviewText': fullReviewText,
-      'timestamp': Timestamp.fromDate(timestamp), // O Firestore usa Timestamp
+      'timestamp': Timestamp.fromDate(timestamp),
       'likes': likes,
     };
   }
 
-  // Criar a partir do Firestore (útil para o feed mais tarde)
+  // Criar a partir do Firestore
   factory ReviewModel.fromMap(Map<String, dynamic> map) {
     return ReviewModel(
       reviewId: map['reviewId'] ?? '',
       userId: map['userId'] ?? '',
       userName: map['userName'] ?? 'Utilizador',
-      songTitle: map['songTitle'] ?? '',
-      artist: map['artist'] ?? '',
-      albumImagePath: map['albumImagePath'] ?? '',
+      songId: map['songId'] ?? '', // Corrigido aqui
       rating: map['rating'] ?? 0,
       fullReviewText: map['fullReviewText'] ?? '',
       timestamp: (map['timestamp'] as Timestamp).toDate(),

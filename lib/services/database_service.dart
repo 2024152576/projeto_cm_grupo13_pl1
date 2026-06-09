@@ -5,19 +5,55 @@ import '../models/playlist_model.dart';
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // 1. Gravar uma Review no Firestore
+  // 1. Gravar ou Atualizar uma Review no Firestore
   Future<void> enviarReview(ReviewModel review) async {
     try {
-      // Cria um documento na coleção global 'reviews' com um ID automático/único
-      await _db.collection('reviews').doc(review.reviewId).set(review.toMap());
+      final docRef = _db.collection('reviews').doc(review.reviewId);
+      final docSnap = await docRef.get();
 
-      // Incrementa o número de reviews do utilizador de forma atómica
-      await _db.collection('users').doc(review.userId).update({
-        'reviewsCount': FieldValue.increment(1),
-      });
+      await docRef.set(review.toMap());
+
+      // Se o documento não existia, incrementa o reviewsCount do utilizador
+      if (!docSnap.exists) {
+        await _db.collection('users').doc(review.userId).update({
+          'reviewsCount': FieldValue.increment(1),
+        });
+      }
     } catch (e) {
       rethrow;
     }
+  }
+
+  // Obter a review de um utilizador específico para uma música específica
+  Future<ReviewModel?> obterReviewUtilizadorMusica(String userId, String songId) async {
+    try {
+      final querySnapshot = await _db
+          .collection('reviews')
+          .where('userId', isEqualTo: userId)
+          .where('songId', isEqualTo: songId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        return ReviewModel.fromMap(querySnapshot.docs.first.data());
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Obter todas as reviews de uma música
+  Stream<List<ReviewModel>> obterReviewsMusica(String songId) {
+    return _db
+        .collection('reviews')
+        .where('songId', isEqualTo: songId)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => ReviewModel.fromMap(doc.data()))
+          .toList();
+    });
   }
 
   // 2. Gravar uma Nova Lista (Playlist) no Firestore
