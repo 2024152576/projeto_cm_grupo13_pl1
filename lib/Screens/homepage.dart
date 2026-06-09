@@ -225,6 +225,22 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   }
 
   Widget _buildMusicaFeed() {
+    final userId = _authService.currentUser?.uid;
+    if (userId == null) {
+      return const Center(
+        child: Text(
+          'Inicia sessão para ver o feed',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    if (_currentUser == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final following = _currentUser!.following;
+
     return StreamBuilder<List<ReviewModel>>(
       stream: _databaseService.streamTodasReviews(),
       builder: (context, snapshot) {
@@ -232,11 +248,24 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final reviews = snapshot.data ?? [];
+        if (following.isEmpty) {
+          return const Center(
+            child: Text(
+              'Segue pessoas para ver as reviews delas no feed.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          );
+        }
+
+        final reviews = (snapshot.data ?? [])
+            .where((review) => following.contains(review.userId))
+            .toList();
+
         if (reviews.isEmpty) {
           return const Center(
             child: Text(
-              'Sem reviews por agora.\nPesquisa uma música e escreve a primeira!',
+              'Sem reviews de pessoas que segues.\nExplora perfis e segue utilizadores!',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
