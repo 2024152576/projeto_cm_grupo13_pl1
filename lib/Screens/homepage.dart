@@ -15,6 +15,7 @@ import 'package:projeto_cm_grupo13_pl1/services/database_service.dart';
 import 'package:projeto_cm_grupo13_pl1/services/lastFM_service.dart';
 import 'package:projeto_cm_grupo13_pl1/services/notification_service.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/music_page.dart';
+import 'package:projeto_cm_grupo13_pl1/Screens/artist_page.dart';
 
 class MainFeedScreen extends StatefulWidget {
   const MainFeedScreen({super.key});
@@ -559,9 +560,57 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
               children: [
                 const Text('Artistas Favoritos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 15),
-                const CircleAvatar(radius: 40, backgroundImage: AssetImage('assets/Artists/ye.jpg')),
-                const SizedBox(height: 8),
-                const Text('Kanye West', style: TextStyle(color: Color(0xFFF3E3B6), fontSize: 12, fontWeight: FontWeight.bold)),
+                if (user.favoriteArtists.isEmpty)
+                  const Text(
+                    'Ainda não tens artistas favoritos.',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  )
+                else
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: user.favoriteArtists.map((artist) {
+                        final name = artist['name'] ?? '';
+                        final image = artist['image'] ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 20.0),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ArtistPage(artistName: name),
+                                ),
+                              );
+                            },
+                            child: Column(
+                              children: [
+                                CircleAvatar(
+                                  radius: 40,
+                                  backgroundImage: _imageFromPath(image),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: 80,
+                                  child: Text(
+                                    name,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Color(0xFFF3E3B6),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -572,14 +621,46 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
               children: [
                 const Text('Músicas Favoritas', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 15),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildFavSong('All Falls Down', 'assets/Covers/cdp.jpg'),
-                    _buildFavSong('Devil in a new dress', 'assets/Covers/mbdtf.jpg'),
-                    _buildFavSong('Stronger', 'assets/Covers/grad.jpg'),
-                  ],
-                ),
+                if (user.favoriteSongs.isEmpty)
+                  const Text(
+                    'Ainda não tens músicas favoritas.',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  )
+                else
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: user.favoriteSongs.map((song) {
+                        final id = song['id'] ?? '';
+                        final name = song['name'] ?? '';
+                        final artist = song['artist'] ?? '';
+                        final image = song['image'] ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 15.0),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MusicPage(
+                                    music: Music(
+                                      id: id,
+                                      name: name,
+                                      artist: artist,
+                                      album: '',
+                                      listeners: '0',
+                                      imageUrl: image,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: _buildFavSong(name, image),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -598,9 +679,25 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   Widget _buildFavSong(String title, String img) {
     return Column(
       children: [
-        Container(width: 80, height: 80, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), image: DecorationImage(image: AssetImage(img), fit: BoxFit.cover))),
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            image: DecorationImage(image: _imageFromPath(img), fit: BoxFit.cover),
+          ),
+        ),
         const SizedBox(height: 8),
-        SizedBox(width: 80, child: Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFF3E3B6), fontSize: 11, fontWeight: FontWeight.bold), maxLines: 2)),
+        SizedBox(
+          width: 80,
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFFF3E3B6), fontSize: 11, fontWeight: FontWeight.bold),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }
@@ -625,6 +722,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => ReviewDetailScreen(
+            userId: review.userId,
             userName: review.userName,
             date: date,
             profileImagePath: '',
@@ -731,6 +829,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => ReviewDetailScreen(
+            userId: review.userId,
             userName: review.userName,
             date: _formatarDataReview(review.timestamp),
             profileImagePath: '',

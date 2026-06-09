@@ -4,6 +4,7 @@ import '../services/lastfm_service.dart';
 import 'music_page.dart';
 
 class ReviewDetailScreen extends StatelessWidget {
+  final String userId;
   final String userName;
   final String date;
   final String profileImagePath;
@@ -17,6 +18,7 @@ class ReviewDetailScreen extends StatelessWidget {
 
   const ReviewDetailScreen({
     super.key,
+    required this.userId,
     required this.userName,
     required this.date,
     required this.profileImagePath,
@@ -74,6 +76,7 @@ class ReviewDetailScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => UserProfileScreen(
+                            userId: userId,
                             userName: userName,
                             profileImagePath: profileImagePath,
                           ),
