@@ -17,6 +17,7 @@ import 'package:projeto_cm_grupo13_pl1/services/notification_service.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/music_page.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/artist_page.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/user_profile_screen.dart';
+import 'package:projeto_cm_grupo13_pl1/models/playlist_model.dart';
 
 enum _SearchMode { music, users, artists }
 
@@ -253,17 +254,70 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   }
 
   Widget _buildListasFeed() {
+    final userId = _authService.currentUser?.uid;
+    if (userId == null) {
+      return const Center(child: Text('Inicia sessão para veres as tuas listas', style: TextStyle(color: Colors.grey)));
+    }
+
     return Stack(
       children: [
-        ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('As suas Listas', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Text('As tuas Listas', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            ),
             const Divider(color: Colors.white54, thickness: 1),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlaylistDetailScreen())),
-              child: _buildPlaylistCard(title: 'Favoritos', songCount: '4 Músicas', imagePath: 'assets/Covers/cdp.jpg'),
+            
+            // Aqui entra o StreamBuilder
+            Expanded(
+              child: StreamBuilder<List<PlaylistModel>>(
+                stream: _databaseService.streamPlaylistsDoUtilizador(userId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xFFFF8282)));
+                  }
+
+                  final playlists = snapshot.data ?? [];
+
+                  if (playlists.isEmpty) {
+                    return const Center(
+                      child: Text('Ainda não tens listas.\nCria a tua primeira lista!', 
+                        textAlign: TextAlign.center, 
+                        style: TextStyle(color: Colors.grey)
+                      )
+                    );
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: playlists.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 15),
+                    itemBuilder: (context, index) {
+                      final playlist = playlists[index];
+                      
+                      // Usar a imagem da primeira música como capa da playlist (se existir)
+                      String imagePath = '';
+                      if (playlist.songs.isNotEmpty && playlist.songs.first['imageUrl'] != null) {
+                        imagePath = playlist.songs.first['imageUrl'];
+                      }
+
+                      return GestureDetector(
+                        onTap: () => Navigator.push(
+                          context, 
+                          MaterialPageRoute(builder: (context) => PlaylistDetailScreen(playlist: playlist))
+                        ),
+                        child: _buildPlaylistCard(
+                          title: playlist.name, 
+                          songCount: '${playlist.songs.length} Músicas', 
+                          imagePath: imagePath
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -951,7 +1005,34 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   }
 
   Widget _buildPlaylistCard({required String title, required String songCount, required String imagePath}) {
-    return Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFF263D4A), borderRadius: BorderRadius.circular(10)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Color(0xFFF3E3B6), fontWeight: FontWeight.bold)), Text(songCount, style: const TextStyle(color: Colors.grey))]), Container(width: 50, height: 50, decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), image: DecorationImage(image: AssetImage(imagePath), fit: BoxFit.cover)))]));
+    return Container(
+      padding: const EdgeInsets.all(15), 
+      decoration: BoxDecoration(color: const Color(0xFF263D4A), borderRadius: BorderRadius.circular(10)), 
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start, 
+            children: [
+              Text(title, style: const TextStyle(color: Color(0xFFF3E3B6), fontWeight: FontWeight.bold, fontSize: 16)), 
+              const SizedBox(height: 4),
+              Text(songCount, style: const TextStyle(color: Colors.grey, fontSize: 12))
+            ]
+          ), 
+          Container(
+            width: 50, height: 50, 
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6), 
+              color: const Color(0xFF1E3746), // Cor de fundo caso não haja imagem
+              image: imagePath.isNotEmpty 
+                  ? DecorationImage(image: NetworkImage(imagePath), fit: BoxFit.cover)
+                  : null,
+            ),
+            child: imagePath.isEmpty ? const Icon(Icons.music_note, color: Colors.white) : null,
+          )
+        ]
+      )
+    );
   }
 
   Widget _buildDiaryCard(ReviewModel review) {

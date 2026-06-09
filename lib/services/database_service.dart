@@ -210,6 +210,29 @@ class DatabaseService {
     }
   }
 
+  // 3. Obter todas as playlists de um utilizador em tempo real
+  Stream<List<PlaylistModel>> streamPlaylistsDoUtilizador(String userId) {
+    return _db
+        .collection('playlists')
+        .where('userId', isEqualTo: userId)
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PlaylistModel.fromMap(doc.data()))
+            .toList());
+  }
+
+  // 4. Adicionar uma música a uma playlist existente
+  Future<void> adicionarMusicaAPlaylist(String playlistId, Map<String, dynamic> musicaData) async {
+    try {
+      await _db.collection('playlists').doc(playlistId).update({
+        'songs': FieldValue.arrayUnion([musicaData])
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // --- PESQUISA DE UTILIZADORES ---
   Future<List<UserModel>> pesquisarUtilizadores(String query) async {
     try {
