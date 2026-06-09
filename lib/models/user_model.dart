@@ -6,6 +6,8 @@ class UserModel {
   final String email;
   final int reviewsCount;
   final int followersCount;
+  final List<Map<String, String>> favoriteArtists;
+  final List<Map<String, String>> favoriteSongs;
 
   UserModel({
     required this.userId, 
@@ -15,6 +17,8 @@ class UserModel {
     required this.email,
     this.reviewsCount = 0,
     this.followersCount = 0,
+    this.favoriteArtists = const [],
+    this.favoriteSongs = const [],
   });
 
   String get fullName {
@@ -22,7 +26,6 @@ class UserModel {
     return name.isNotEmpty ? name : 'Utilizador';
   }
 
-  // Converte os dados do utilizador para um Mapa (JSON) para enviar para o Firestore
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -30,12 +33,13 @@ class UserModel {
       'lastName': lastName,
       'username': username.startsWith('@') ? username : '@$username',
       'email': email,
-      'followersCount': 0,
-      'reviewsCount': 0,
+      'followersCount': followersCount,
+      'reviewsCount': reviewsCount,
+      'favoriteArtists': favoriteArtists,
+      'favoriteSongs': favoriteSongs,
     };
   }
 
-  // Cria um UserModel a partir de um documento do Firestore
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       userId: map['userId'] ?? '', 
@@ -45,6 +49,12 @@ class UserModel {
       email: map['email'] ?? '',
       reviewsCount: map['reviewsCount'] ?? 0,
       followersCount: map['followersCount'] ?? 0,
+      favoriteArtists: List<Map<String, dynamic>>.from(map['favoriteArtists'] ?? [])
+          .map((e) => e.map((key, value) => MapEntry(key, value.toString())))
+          .toList(),
+      favoriteSongs: List<Map<String, dynamic>>.from(map['favoriteSongs'] ?? [])
+          .map((e) => e.map((key, value) => MapEntry(key, value.toString())))
+          .toList(),
     );
   }
 }
