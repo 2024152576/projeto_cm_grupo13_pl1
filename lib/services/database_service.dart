@@ -64,6 +64,14 @@ class DatabaseService {
     });
   }
 
+  Future<UserModel?> obterUtilizador(String userId) async {
+    final doc = await _db.collection('users').doc(userId).get();
+    if (doc.exists && doc.data() != null) {
+      return UserModel.fromMap(doc.data()!);
+    }
+    return null;
+  }
+
   Stream<List<ReviewModel>> streamReviewsDeOutros(String currentUserId) {
     return _db
         .collection('reviews')
@@ -149,6 +157,50 @@ class DatabaseService {
     await userDoc.update({'favoriteSongs': favorites});
   }
 
+  // Seguir Utilizador
+  Future<void> alternarSeguirUtilizador(String currentUserId, String targetUserId) async {
+    final currentUserDoc = _db.collection('users').doc(currentUserId);
+    final targetUserDoc = _db.collection('users').doc(targetUserId);
+
+    await _db.runTransaction((transaction) async {
+      final currentSnap = await transaction.get(currentUserDoc);
+      final targetSnap = await transaction.get(targetUserDoc);
+
+      if (!currentSnap.exists || !targetSnap.exists) return;
+
+      final currentUser = UserModel.fromMap(currentSnap.data()!);
+      List<String> following = List.from(currentUser.following);
+
+      if (following.contains(targetUserId)) {
+        following.remove(targetUserId);
+        transaction.update(currentUserDoc, {
+          'following': following,
+          'followingCount': FieldValue.increment(-1)
+        });
+        transaction.update(targetUserDoc, {'followersCount': FieldValue.increment(-1)});
+      } else {
+        following.add(targetUserId);
+        transaction.update(currentUserDoc, {
+          'following': following,
+          'followingCount': FieldValue.increment(1)
+        });
+        transaction.update(targetUserDoc, {'followersCount': FieldValue.increment(1)});
+      }
+    });
+  }
+
+  Future<List<UserModel>> obterSeguidos(List<String> followingIds) async {
+    if (followingIds.isEmpty) return [];
+    
+    // Firestore 'whereIn' supports up to 10 items. For simplicity here, or we can fetch individually
+    List<UserModel> users = [];
+    for (String id in followingIds) {
+      final user = await obterUtilizador(id);
+      if (user != null) users.add(user);
+    }
+    return users;
+  }
+
   // 2. Gravar uma Nova Lista (Playlist) no Firestore
   Future<void> criarPlaylist(PlaylistModel playlist) async {
     try {
@@ -161,14 +213,11 @@ class DatabaseService {
   // --- PESQUISA DE UTILIZADORES ---
   Future<List<UserModel>> pesquisarUtilizadores(String query) async {
     try {
-      // Vai buscar todos os utilizadores (aceitável para projetos pequenos)
       final snapshot = await _db.collection('users').get();
       final users = snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
 
-      // Limpa a query para facilitar a pesquisa (tira espaços e o @ se o utilizador o colocar)
       final queryLower = query.toLowerCase().replaceAll('@', '').trim();
-      
-      // Filtra os utilizadores que contenham o texto no username, primeiro ou último nome
+
       return users.where((u) {
         return u.username.toLowerCase().contains(queryLower) ||
                u.firstName.toLowerCase().contains(queryLower) ||

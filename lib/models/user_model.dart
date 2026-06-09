@@ -6,8 +6,10 @@ class UserModel {
   final String email;
   final int reviewsCount;
   final int followersCount;
+  final int followingCount;
   final List<Map<String, String>> favoriteArtists;
   final List<Map<String, String>> favoriteSongs;
+  final List<String> following;
 
   UserModel({
     required this.userId, 
@@ -17,8 +19,10 @@ class UserModel {
     required this.email,
     this.reviewsCount = 0,
     this.followersCount = 0,
+    this.followingCount = 0,
     this.favoriteArtists = const [],
     this.favoriteSongs = const [],
+    this.following = const [],
   });
 
   String get fullName {
@@ -34,9 +38,11 @@ class UserModel {
       'username': username.startsWith('@') ? username : '@$username',
       'email': email,
       'followersCount': followersCount,
+      'followingCount': followingCount,
       'reviewsCount': reviewsCount,
       'favoriteArtists': favoriteArtists,
       'favoriteSongs': favoriteSongs,
+      'following': following,
     };
   }
 
@@ -49,12 +55,14 @@ class UserModel {
       email: map['email'] ?? '',
       reviewsCount: map['reviewsCount'] ?? 0,
       followersCount: map['followersCount'] ?? 0,
+      followingCount: map['followingCount'] ?? 0,
       favoriteArtists: List<Map<String, dynamic>>.from(map['favoriteArtists'] ?? [])
           .map((e) => e.map((key, value) => MapEntry(key, value.toString())))
           .toList(),
       favoriteSongs: List<Map<String, dynamic>>.from(map['favoriteSongs'] ?? [])
           .map((e) => e.map((key, value) => MapEntry(key, value.toString())))
           .toList(),
+      following: List<String>.from(map['following'] ?? []),
     );
   }
 }

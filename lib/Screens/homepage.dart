@@ -634,159 +634,203 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('${user.reviewsCount} ', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              const Text('Reviews', style: TextStyle(color: Color(0xFFF3E3B6))),
+              _buildStatColumn(user.reviewsCount, 'Reviews'),
               const SizedBox(width: 30),
-              Text('${user.followersCount} ', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              const Text('Seguidores', style: TextStyle(color: Color(0xFFF3E3B6))),
+              _buildStatColumn(user.followersCount, 'Seguidores'),
+              const SizedBox(width: 30),
+              _buildStatColumn(user.followingCount, 'A seguir'),
             ],
           ),
           const SizedBox(height: 20),
           const Divider(color: Colors.grey, height: 1),
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Artistas Favoritos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 15),
-                if (user.favoriteArtists.isEmpty)
-                  const Text(
-                    'Ainda não tens artistas favoritos.',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  )
-                else
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: user.favoriteArtists.map((artist) {
-                        final name = artist['name'] ?? '';
-                        final image = artist['image'] ?? '';
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 20.0),
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ArtistPage(artistName: name),
-                                ),
-                              );
-                            },
-                            child: Column(
-                              children: [
-                                CircleAvatar(
-                                  radius: 40,
-                                  backgroundImage: _imageFromPath(image),
-                                ),
-                                const SizedBox(height: 8),
-                                SizedBox(
-                                  width: 80,
-                                  child: Text(
-                                    name,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Color(0xFFF3E3B6),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Músicas Favoritas', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 15),
-                if (user.favoriteSongs.isEmpty)
-                  const Text(
-                    'Ainda não tens músicas favoritas.',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  )
-                else
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: user.favoriteSongs.map((song) {
-                        final id = song['id'] ?? '';
-                        final name = song['name'] ?? '';
-                        final artist = song['artist'] ?? '';
-                        final image = song['image'] ?? '';
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 15.0),
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MusicPage(
-                                    music: Music(
-                                      id: id,
-                                      name: name,
-                                      artist: artist,
-                                      album: '',
-                                      listeners: '0',
-                                      imageUrl: image,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                            child: _buildFavSong(name, image),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+          _buildFavoritesSection('Artistas Favoritos', user.favoriteArtists, true),
+          _buildFavoritesSection('Músicas Favoritas', user.favoriteSongs, false),
           const SizedBox(height: 20),
-          _buildMenuOption('Listas'),
-          _buildMenuOption('Diário'),
-          _buildMenuOption('A seguir'),
-          const Divider(color: Colors.grey, height: 1),
+          _buildReviewsExpansion(user.userId),
+          _buildFollowingExpansion(user),
+          const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-
-
-  Widget _buildFavSong(String title, String img) {
+  Widget _buildStatColumn(int count, String label) {
     return Column(
       children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            image: DecorationImage(image: _imageFromPath(img), fit: BoxFit.cover),
-          ),
+        Text('$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(label, style: const TextStyle(color: Color(0xFFF3E3B6), fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _buildFavoritesSection(String title, List<Map<String, String>> items, bool isArtist) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 15),
+          if (items.isEmpty)
+            Text('Sem ${title.toLowerCase()}.', style: const TextStyle(color: Colors.grey, fontSize: 13))
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: items.map((item) {
+                  final name = item['name'] ?? '';
+                  final image = item['image'] ?? '';
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 15.0),
+                    child: GestureDetector(
+                      onTap: () {
+                        if (isArtist) {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => ArtistPage(artistName: name)));
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MusicPage(
+                                music: Music(
+                                  id: item['id'] ?? '',
+                                  name: name,
+                                  artist: item['artist'] ?? '',
+                                  album: '',
+                                  listeners: '0',
+                                  imageUrl: image,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: Column(
+                        children: [
+                          isArtist
+                              ? CircleAvatar(radius: 40, backgroundImage: _imageFromPath(image))
+                              : Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    image: DecorationImage(image: _imageFromPath(image), fit: BoxFit.cover),
+                                  ),
+                                ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 80,
+                            child: Text(
+                              name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Color(0xFFF3E3B6), fontWeight: FontWeight.bold, fontSize: 11),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewsExpansion(String userId) {
+    return ExpansionTile(
+      title: const Text('Reviews', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+      iconColor: const Color(0xFFFF8282),
+      collapsedIconColor: Colors.white,
+      children: [
+        StreamBuilder<List<ReviewModel>>(
+          stream: _databaseService.streamReviewsDoUtilizador(userId),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+            final reviews = snapshot.data!;
+            if (reviews.isEmpty) return const Padding(padding: EdgeInsets.all(20), child: Text('Ainda não há reviews.', style: TextStyle(color: Colors.grey)));
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: reviews.length,
+              itemBuilder: (context, index) {
+                final review = reviews[index];
+                return ListTile(
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.network(review.albumImageUrl, width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.music_note, color: Colors.white)),
+                  ),
+                  title: Text(review.songTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: Text(review.artist, style: const TextStyle(color: Colors.grey)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, color: Color(0xFFFF8282), size: 16),
+                      Text(' ${review.rating}', style: const TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReviewDetailScreen(
+                        userId: review.userId,
+                        userName: review.userName,
+                        date: _formatarDataReview(review.timestamp),
+                        profileImagePath: '',
+                        songTitle: review.songTitle,
+                        artist: review.artist,
+                        year: review.timestamp.year.toString(),
+                        rating: review.rating,
+                        likes: '${review.likes} Gostos',
+                        albumImagePath: review.albumImageUrl,
+                        fullReviewText: review.fullReviewText,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: 80,
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFFF3E3B6), fontSize: 11, fontWeight: FontWeight.bold),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+      ],
+    );
+  }
+
+  Widget _buildFollowingExpansion(UserModel user) {
+    if (user.following.isEmpty) {
+      return const ListTile(title: Text('A seguir', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)), subtitle: Text('Ainda não segues ninguém.', style: TextStyle(color: Colors.grey)));
+    }
+
+    return ExpansionTile(
+      title: const Text('A seguir', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+      iconColor: const Color(0xFFFF8282),
+      collapsedIconColor: Colors.white,
+      children: [
+        FutureBuilder<List<UserModel>>(
+          future: _databaseService.obterSeguidos(user.following),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+            final following = snapshot.data!;
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: following.length,
+              itemBuilder: (context, index) {
+                final f = following[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFFFF8282),
+                    child: Text(f.firstName[0].toUpperCase(), style: const TextStyle(color: Colors.white)),
+                  ),
+                  title: Text(f.fullName, style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(f.username, style: const TextStyle(color: Color(0xFFFF8282))),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfileScreen(userId: f.userId, userName: f.fullName, profileImagePath: ''))),
+                );
+              },
+            );
+          },
         ),
       ],
     );
