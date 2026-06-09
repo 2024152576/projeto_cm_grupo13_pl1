@@ -1,19 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'playlist_detail_screen.dart';
 import 'create_playlist_screen.dart';
 import 'review_detail_screen.dart';
 import 'add_music_screen.dart';
-import 'settings_screen.dart';
 import 'package:projeto_cm_grupo13_pl1/models/music.dart';
-import 'package:projeto_cm_grupo13_pl1/models/user_model.dart';
-import 'package:projeto_cm_grupo13_pl1/models/review_model.dart';
-import 'package:projeto_cm_grupo13_pl1/services/auth_service.dart';
-import 'package:projeto_cm_grupo13_pl1/services/database_service.dart';
 import 'package:projeto_cm_grupo13_pl1/services/lastFM_service.dart';
-import 'package:projeto_cm_grupo13_pl1/services/notification_service.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/music_page.dart';
 
 class MainFeedScreen extends StatefulWidget {
@@ -27,51 +18,12 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   int _bottomNavIndex = 0;
 
   final LastFmService _lastFmService = LastFmService();
-  final AuthService _authService = AuthService();
-  final DatabaseService _databaseService = DatabaseService();
 
   final TextEditingController _searchController =
   TextEditingController();
 
   List<Music> _results = [];
   bool _isLoading = false;
-  UserModel? _currentUser;
-  StreamSubscription<UserModel?>? _userSub;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCurrentUser();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService.instance
-          .startListening(_authService.currentUser?.uid);
-    });
-  }
-
-  void _loadCurrentUser() {
-    final uid = _authService.currentUser?.uid;
-    if (uid == null) return;
-
-    _userSub = _databaseService.streamUtilizador(uid).listen((user) {
-      if (mounted) setState(() => _currentUser = user);
-    });
-  }
-
-  @override
-  void dispose() {
-    _userSub?.cancel();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  String _formatarTempoRelativo(DateTime dateTime) {
-    final diff = DateTime.now().difference(dateTime);
-    if (diff.inMinutes < 1) return 'agora';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m atrás';
-    if (diff.inHours < 24) return '${diff.inHours}h atrás';
-    if (diff.inDays < 7) return '${diff.inDays} dias atrás';
-    return DateFormat('d MMM').format(dateTime);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,43 +59,10 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
             ? AppBar(
           backgroundColor: const Color(0xFF1E3746),
           elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Text(
-            _currentUser?.fullName ?? 'Perfil',
-            style: const TextStyle(color: Color(0xFFF3E3B6), fontSize: 24, fontWeight: FontWeight.bold),
-          ),
+          leading: const Icon(Icons.settings_outlined, color: Color(0xFFF3E3B6), size: 30),
+          title: const Text('Name', style: TextStyle(color: Color(0xFFF3E3B6), fontSize: 24, fontWeight: FontWeight.bold)),
           centerTitle: true,
-          actions: [
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_horiz, color: Color(0xFFF3E3B6), size: 30),
-              color: const Color(0xFF263D4A),
-              offset: const Offset(0, 48),
-              onSelected: (value) {
-                if (value == 'definicoes') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  );
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem<String>(
-                  value: 'definicoes',
-                  child: Row(
-                    children: [
-                      Icon(Icons.settings_outlined, color: Color(0xFFF3E3B6), size: 22),
-                      SizedBox(width: 12),
-                      Text(
-                        'Definições',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 12),
-          ],
+          actions: const [Padding(padding: EdgeInsets.only(right: 20), child: Icon(Icons.more_horiz, color: Color(0xFFF3E3B6), size: 30))],
         )
             : null,
 
@@ -379,81 +298,36 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   }
 
   Widget _buildNotificacoesFeed() {
-    final userId = _authService.currentUser?.uid;
-    if (userId == null) {
-      return const Center(
-        child: Text(
-          'Inicia sessão para ver notificações',
-          style: TextStyle(color: Colors.grey),
-        ),
-      );
-    }
-
-    return StreamBuilder<List<ReviewModel>>(
-      stream: _databaseService.streamReviewsDeOutros(userId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final reviews = snapshot.data ?? [];
-        if (reviews.isEmpty) {
-          return const Center(
-            child: Text(
-              'Sem notificações por agora',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          );
-        }
-
-        return ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          itemCount: reviews.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 15),
-          itemBuilder: (context, index) {
-            final review = reviews[index];
-            return _buildNotificationItem(
-              userName: review.userName,
-              action: 'adicionou uma Review',
-              time: _formatarTempoRelativo(review.timestamp),
-            );
-          },
-        );
-      },
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      children: [
+        _buildNotificationItem(userName: 'Tiago Mendes', action: 'gostou da tua Review', time: '2h atrás', profileImagePath: 'assets/Users/tiago.jpg'),
+        const SizedBox(height: 15),
+        _buildNotificationItem(userName: 'Sofia Oliveira', action: 'adicionou uma Review', time: '2 dias atrás', profileImagePath: 'assets/Users/sofia.jpg'),
+        const SizedBox(height: 15),
+        _buildNotificationItem(userName: 'Sofia Oliveira', action: 'adicionou uma Review', time: '5 dias atrás', profileImagePath: 'assets/Users/sofia.jpg'),
+      ],
     );
   }
 
   Widget _buildPerfilFeed() {
-    final user = _currentUser;
-
-    if (user == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     return SingleChildScrollView(
       child: Column(
         children: [
           const SizedBox(height: 20),
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: const Color(0xFFFF8282),
-            child: Text(
-              user.firstName.isNotEmpty ? user.firstName[0].toUpperCase() : '?',
-              style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
-            ),
-          ),
+          const CircleAvatar(radius: 50, backgroundImage: AssetImage('assets/Users/sofia.jpg')),
           const SizedBox(height: 15),
-          Text(user.fullName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          Text(user.username, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          const Text('Ambrosio Milfonte', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('@Username', style: TextStyle(color: Colors.grey, fontSize: 14)),
           const SizedBox(height: 15),
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('${user.reviewsCount} ', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              const Text('Reviews', style: TextStyle(color: Color(0xFFF3E3B6))),
-              const SizedBox(width: 30),
-              Text('${user.followersCount} ', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              const Text('Seguidores', style: TextStyle(color: Color(0xFFF3E3B6))),
+              Text('4 ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text('Reviews', style: TextStyle(color: Color(0xFFF3E3B6))),
+              SizedBox(width: 30),
+              Text('2 ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text('Seguidores', style: TextStyle(color: Color(0xFFF3E3B6))),
             ],
           ),
           const SizedBox(height: 20),
@@ -544,57 +418,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     return Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFF263D4A), borderRadius: BorderRadius.circular(10)), child: Row(children: [Container(width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), image: DecorationImage(image: AssetImage(imagePath), fit: BoxFit.cover))), const SizedBox(width: 15), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), Text(artist, style: const TextStyle(color: Colors.grey)), Row(children: List.generate(5, (i) => Icon(i < rating ? Icons.star : Icons.star_border, color: const Color(0xFFFF8282), size: 20)))]))]));
   }
 
-  Widget _buildNotificationItem({
-    required String userName,
-    required String action,
-    required String time,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: const Color(0xFFFF8282),
-            child: Text(
-              userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(color: Color(0xFF1E3746), fontSize: 14),
-                children: [
-                  TextSpan(
-                    text: '$userName ',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  TextSpan(text: action),
-                ],
-              ),
-            ),
-          ),
-          Text(
-            time,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
+  Widget _buildNotificationItem({required String userName, required String action, required String time, required String profileImagePath}) {
+    return Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)), child: Row(children: [CircleAvatar(radius: 25, backgroundImage: AssetImage(profileImagePath)), const SizedBox(width: 15), Expanded(child: RichText(text: TextSpan(style: const TextStyle(color: Color(0xFF1E3746), fontSize: 14), children: [TextSpan(text: '$userName ', style: const TextStyle(fontWeight: FontWeight.bold)), TextSpan(text: action)]))), Text(time, style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold))]));
   }
 
   Widget _buildMonthHeader(String txt) => Container(width: double.infinity, color: Colors.grey, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6), child: Text(txt, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)));
