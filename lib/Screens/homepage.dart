@@ -310,7 +310,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                         ),
                         child: _buildPlaylistCard(
                           title: playlist.name, 
-                          songCount: '${playlist.songs.length} Músicas', 
+                          songCount: '${playlist.songs.length} ${playlist.songs.length == 1 ? 'Música' : 'Músicas'}', 
                           imagePath: imagePath
                         ),
                       );

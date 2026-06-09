@@ -233,6 +233,27 @@ class DatabaseService {
     }
   }
 
+  // 5. Obter uma playlist específica em tempo real (para ver as músicas a atualizar)
+  Stream<PlaylistModel?> streamPlaylist(String playlistId) {
+    return _db.collection('playlists').doc(playlistId).snapshots().map((doc) {
+      if (doc.exists && doc.data() != null) {
+        return PlaylistModel.fromMap(doc.data()!);
+      }
+      return null;
+    });
+  }
+
+  // 6. Remover uma música de uma playlist existente
+  Future<void> removerMusicaDaPlaylist(String playlistId, Map<String, dynamic> musicaData) async {
+    try {
+      await _db.collection('playlists').doc(playlistId).update({
+        'songs': FieldValue.arrayRemove([musicaData])
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // --- PESQUISA DE UTILIZADORES ---
   Future<List<UserModel>> pesquisarUtilizadores(String query) async {
     try {
