@@ -16,6 +16,15 @@ class ReviewModel {
   
   /// Identificador único da faixa musical proveniente da API Externa de música.
   final String songId;
+
+  /// Título da faixa musical (cópia para exibição no feed).
+  final String songTitle;
+
+  /// Nome do artista (cópia para exibição no feed).
+  final String artist;
+
+  /// URL ou caminho local da capa do álbum.
+  final String albumImageUrl;
   
   /// Classificação quantitativa de 1 a 5 estrelas atribuída à faixa.
   final int rating;
@@ -35,6 +44,9 @@ class ReviewModel {
     required this.userId,
     required this.userName,
     required this.songId,
+    this.songTitle = '',
+    this.artist = '',
+    this.albumImageUrl = '',
     required this.rating,
     required this.fullReviewText,
     required this.timestamp,
@@ -50,6 +62,9 @@ class ReviewModel {
       'userId': userId,
       'userName': userName,
       'songId': songId,
+      'songTitle': songTitle,
+      'artist': artist,
+      'albumImageUrl': albumImageUrl,
       'rating': rating,
       'fullReviewText': fullReviewText,
       'timestamp': Timestamp.fromDate(timestamp),
@@ -65,7 +80,10 @@ class ReviewModel {
       reviewId: map['reviewId'] ?? '',
       userId: map['userId'] ?? '',
       userName: map['userName'] ?? 'Utilizador',
-      songId: map['songId'] ?? '', // Corrigido aqui
+      songId: map['songId'] ?? '',
+      songTitle: map['songTitle'] ?? '',
+      artist: map['artist'] ?? '',
+      albumImageUrl: map['albumImageUrl'] ?? '',
       rating: map['rating'] ?? 0,
       fullReviewText: map['fullReviewText'] ?? '',
       timestamp: (map['timestamp'] as Timestamp).toDate(),

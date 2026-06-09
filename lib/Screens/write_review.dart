@@ -74,9 +74,12 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         userId: user.uid,
         userName: firstName,
         songId: widget.songId,
+        songTitle: widget.songTitle,
+        artist: widget.artist,
+        albumImageUrl: widget.albumImagePath,
         rating: _rating,
         fullReviewText: _reviewTextController.text.trim(),
-        timestamp: DateTime.now(),
+        timestamp: widget.reviewExistente?.timestamp ?? DateTime.now(),
       );
 
       await _databaseService.enviarReview(novaReview);

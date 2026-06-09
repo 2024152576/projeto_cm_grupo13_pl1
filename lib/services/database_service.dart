@@ -78,6 +78,31 @@ class DatabaseService {
     });
   }
 
+  Stream<List<ReviewModel>> streamTodasReviews() {
+    return _db
+        .collection('reviews')
+        .orderBy('timestamp', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ReviewModel.fromMap(doc.data()))
+            .toList());
+  }
+
+  Stream<List<ReviewModel>> streamReviewsDoUtilizador(String userId) {
+    return _db
+        .collection('reviews')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      final reviews = snapshot.docs
+          .map((doc) => ReviewModel.fromMap(doc.data()))
+          .toList();
+      reviews.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return reviews;
+    });
+  }
+
   // Favoritar Artista
   Future<void> alternarFavoritoArtista(String userId, Map<String, String> artistData) async {
     final userDoc = _db.collection('users').doc(userId);

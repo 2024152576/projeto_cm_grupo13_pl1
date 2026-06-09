@@ -29,6 +29,12 @@ class ReviewDetailScreen extends StatelessWidget {
     required this.fullReviewText,
   });
 
+  ImageProvider _imageFromPath(String path) {
+    if (path.startsWith('http')) return NetworkImage(path);
+    if (path.isNotEmpty) return AssetImage(path);
+    return const AssetImage('assets/Covers/cdp.jpg');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,10 +83,23 @@ class ReviewDetailScreen extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 25,
-                          backgroundImage: AssetImage(profileImagePath),
-                        ),
+                        profileImagePath.isNotEmpty
+                            ? CircleAvatar(
+                                radius: 25,
+                                backgroundImage: _imageFromPath(profileImagePath),
+                              )
+                            : CircleAvatar(
+                                radius: 25,
+                                backgroundColor: const Color(0xFFFF8282),
+                                child: Text(
+                                  userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ),
                         const SizedBox(width: 15),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,7 +232,7 @@ class ReviewDetailScreen extends StatelessWidget {
                           height: 120,
                           decoration: BoxDecoration(
                             image: DecorationImage(
-                              image: AssetImage(albumImagePath),
+                              image: _imageFromPath(albumImagePath),
                               fit: BoxFit.cover,
                             ),
                           ),

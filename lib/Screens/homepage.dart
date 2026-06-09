@@ -73,6 +73,54 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     return DateFormat('d MMM').format(dateTime);
   }
 
+  String _formatarDataReview(DateTime dateTime) {
+    const meses = [
+      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+    ];
+    return '${dateTime.day} de ${meses[dateTime.month - 1]}';
+  }
+
+  String _formatarMesAno(DateTime dateTime) {
+    const meses = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+    ];
+    return '${meses[dateTime.month - 1]} ${dateTime.year}';
+  }
+
+  ImageProvider _imageFromPath(String path) {
+    if (path.startsWith('http')) return NetworkImage(path);
+    if (path.isNotEmpty) return AssetImage(path);
+    return const AssetImage('assets/Covers/cdp.jpg');
+  }
+
+  Widget _buildAlbumCover(String imagePath, {double size = 70}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        image: DecorationImage(image: _imageFromPath(imagePath), fit: BoxFit.cover),
+      ),
+    );
+  }
+
+  Widget _buildUserAvatar(String userName, {double radius = 20}) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFFFF8282),
+      child: Text(
+        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: radius * 0.9,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -168,13 +216,31 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   }
 
   Widget _buildMusicaFeed() {
-    return ListView(
-      padding: const EdgeInsets.all(20.0),
-      children: [
-        _buildPostCard(context, userName: 'Sofia Oliveira', date: '3 de maio', profileImagePath: 'assets/Users/sofia.jpg', songTitle: 'All Of The Lights', artist: 'Kanye West', albumImagePath: 'assets/Covers/mbdtf.jpg', rating: 5, year: '2010', likes: '1 Gosto', description: 'Produção cinematográfica pura. O Kanye juntou Rihanna, Kid Cudi, Fergie, Alicia Keys, Elton John...'),
-        const SizedBox(height: 20),
-        _buildPostCard(context, userName: 'Tiago Mendes', date: '14 de abril', profileImagePath: 'assets/Users/tiago.jpg', songTitle: 'Stronger', artist: 'Kanye West', albumImagePath: 'assets/Covers/grad.jpg', rating: 4, year: '2007', likes: '3 Gostos', description: 'O sample do Daft Punk é simplesmente perfeito.'),
-      ],
+    return StreamBuilder<List<ReviewModel>>(
+      stream: _databaseService.streamTodasReviews(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final reviews = snapshot.data ?? [];
+        if (reviews.isEmpty) {
+          return const Center(
+            child: Text(
+              'Sem reviews por agora.\nPesquisa uma música e escreve a primeira!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(20.0),
+          itemCount: reviews.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 20),
+          itemBuilder: (context, index) => _buildPostCard(context, reviews[index]),
+        );
+      },
     );
   }
 
@@ -210,31 +276,59 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   }
 
   Widget _buildDiarioFeed() {
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        _buildMonthHeader('Maio 2026'),
-        Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              _buildDiaryCard(title: 'Devil In A New Dress', artist: 'Artist', rating: 4, imagePath: 'assets/Covers/mbdtf.jpg'),
-              const SizedBox(height: 15),
-              _buildDiaryCard(title: 'Flashing Lights', artist: 'Artist', rating: 5, imagePath: 'assets/Covers/grad.jpg'),
+    final userId = _authService.currentUser?.uid;
+    if (userId == null) {
+      return const Center(
+        child: Text(
+          'Inicia sessão para ver o teu diário',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
+
+    return StreamBuilder<List<ReviewModel>>(
+      stream: _databaseService.streamReviewsDoUtilizador(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final reviews = snapshot.data ?? [];
+        if (reviews.isEmpty) {
+          return const Center(
+            child: Text(
+              'Ainda não tens reviews no diário',
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          );
+        }
+
+        final grouped = <String, List<ReviewModel>>{};
+        for (final review in reviews) {
+          final key = _formatarMesAno(review.timestamp);
+          grouped.putIfAbsent(key, () => []).add(review);
+        }
+
+        return ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            for (final entry in grouped.entries) ...[
+              _buildMonthHeader(entry.key),
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < entry.value.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 15),
+                      _buildDiaryCard(entry.value[i]),
+                    ],
+                  ],
+                ),
+              ),
             ],
-          ),
-        ),
-        _buildMonthHeader('Março 2026'),
-        Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: _buildDiaryCard(title: 'All Falls Down', artist: 'Kanye West', rating: 4, imagePath: 'assets/Covers/cdp.jpg'),
-        ),
-        _buildMonthHeader('Fevereiro 2026'),
-        Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: _buildDiaryCard(title: 'Stronger', artist: 'Kanye West', rating: 5, imagePath: 'assets/Covers/grad.jpg'),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -520,18 +614,106 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     );
   }
 
-  Widget _buildPostCard(BuildContext context, {required String userName, required String date, required String profileImagePath, required String songTitle, required String artist, required String albumImagePath, required String description, required int rating, required String year, required String likes}) {
+  Widget _buildPostCard(BuildContext context, ReviewModel review) {
+    final songTitle = review.songTitle.isNotEmpty ? review.songTitle : 'Música';
+    final artist = review.artist.isNotEmpty ? review.artist : 'Artista desconhecido';
+    final date = _formatarDataReview(review.timestamp);
+    final likes = '${review.likes} ${review.likes == 1 ? 'Gosto' : 'Gostos'}';
+
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReviewDetailScreen(userName: userName, date: date, profileImagePath: profileImagePath, songTitle: songTitle, artist: artist, year: year, rating: rating, likes: likes, albumImagePath: albumImagePath, fullReviewText: description))),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReviewDetailScreen(
+            userName: review.userName,
+            date: date,
+            profileImagePath: '',
+            songTitle: songTitle,
+            artist: artist,
+            year: review.timestamp.year.toString(),
+            rating: review.rating,
+            likes: likes,
+            albumImagePath: review.albumImageUrl,
+            fullReviewText: review.fullReviewText,
+          ),
+        ),
+      ),
       child: Container(
-        padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: const Color(0xFF263D4A), borderRadius: BorderRadius.circular(15)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [CircleAvatar(radius: 20, backgroundImage: AssetImage(profileImagePath)), const SizedBox(width: 15), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(userName, style: const TextStyle(color: Color(0xFFF3E3B6), fontWeight: FontWeight.bold)), Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12))])]),
-          const SizedBox(height: 20),
-          Row(children: [Container(width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), image: DecorationImage(image: AssetImage(albumImagePath), fit: BoxFit.cover))), const SizedBox(width: 15), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(songTitle, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), Text(artist, style: const TextStyle(color: Colors.grey, fontSize: 14)), Row(children: List.generate(5, (i) => const Icon(Icons.star, color: Color(0xFFFF8282), size: 20)))])),]),
-          const SizedBox(height: 15),
-          Text(description, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey)),
-        ]),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF263D4A),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildUserAvatar(review.userName),
+                const SizedBox(width: 15),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      review.userName,
+                      style: const TextStyle(
+                        color: Color(0xFFF3E3B6),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      date,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                _buildAlbumCover(review.albumImageUrl),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        songTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        artist,
+                        style: const TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      Row(
+                        children: List.generate(
+                          5,
+                          (i) => Icon(
+                            i < review.rating ? Icons.star : Icons.star_border,
+                            color: const Color(0xFFFF8282),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Text(
+              review.fullReviewText,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -540,8 +722,67 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     return Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFF263D4A), borderRadius: BorderRadius.circular(10)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Color(0xFFF3E3B6), fontWeight: FontWeight.bold)), Text(songCount, style: const TextStyle(color: Colors.grey))]), Container(width: 50, height: 50, decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), image: DecorationImage(image: AssetImage(imagePath), fit: BoxFit.cover)))]));
   }
 
-  Widget _buildDiaryCard({required String title, required String artist, required int rating, required String imagePath}) {
-    return Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFF263D4A), borderRadius: BorderRadius.circular(10)), child: Row(children: [Container(width: 70, height: 70, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), image: DecorationImage(image: AssetImage(imagePath), fit: BoxFit.cover))), const SizedBox(width: 15), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), Text(artist, style: const TextStyle(color: Colors.grey)), Row(children: List.generate(5, (i) => Icon(i < rating ? Icons.star : Icons.star_border, color: const Color(0xFFFF8282), size: 20)))]))]));
+  Widget _buildDiaryCard(ReviewModel review) {
+    final songTitle = review.songTitle.isNotEmpty ? review.songTitle : 'Música';
+    final artist = review.artist.isNotEmpty ? review.artist : 'Artista desconhecido';
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReviewDetailScreen(
+            userName: review.userName,
+            date: _formatarDataReview(review.timestamp),
+            profileImagePath: '',
+            songTitle: songTitle,
+            artist: artist,
+            year: review.timestamp.year.toString(),
+            rating: review.rating,
+            likes: '${review.likes} ${review.likes == 1 ? 'Gosto' : 'Gostos'}',
+            albumImagePath: review.albumImageUrl,
+            fullReviewText: review.fullReviewText,
+          ),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: const Color(0xFF263D4A),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            _buildAlbumCover(review.albumImageUrl),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    songTitle,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(artist, style: const TextStyle(color: Colors.grey)),
+                  Row(
+                    children: List.generate(
+                      5,
+                      (i) => Icon(
+                        i < review.rating ? Icons.star : Icons.star_border,
+                        color: const Color(0xFFFF8282),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildNotificationItem({
