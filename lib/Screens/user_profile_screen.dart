@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'artist_page.dart';
-import 'music_page.dart';
-import '../models/music.dart';
 
 class UserProfileScreen extends StatelessWidget {
   final String userName;
@@ -23,14 +20,14 @@ class UserProfileScreen extends StatelessWidget {
 
     List<Map<String, String>> favSongs = isSofia
         ? [
-      {'title': 'All Of The Lights', 'image': 'assets/Covers/mbdtf.jpg', 'artist': 'Kanye West'},
-      {'title': 'Devil In A New Dress', 'image': 'assets/Covers/mbdtf.jpg', 'artist': 'Kanye West'},
-      {'title': 'Flashing Lights', 'image': 'assets/Covers/grad.jpg', 'artist': 'Kanye West'},
+      {'title': 'All Of The Lights', 'image': 'assets/Covers/mbdtf.jpg'},
+      {'title': 'Devil In A New Dress', 'image': 'assets/Covers/mbdtf.jpg'},
+      {'title': 'Flashing Lights', 'image': 'assets/Covers/grad.jpg'},
     ]
         : [
-      {'title': 'Jesus Walks', 'image': 'assets/Covers/cdp.jpg', 'artist': 'Kanye West'},
-      {'title': 'I Wonder', 'image': 'assets/Covers/grad.jpg', 'artist': 'Kanye West'},
-      {'title': 'Runaway', 'image': 'assets/Covers/mbdtf.jpg', 'artist': 'Kanye West'},
+      {'title': 'Jesus Walks', 'image': 'assets/Covers/cdp.jpg'},
+      {'title': 'I Wonder', 'image': 'assets/Covers/grad.jpg'},
+      {'title': 'Runaway', 'image': 'assets/Covers/mbdtf.jpg'},
     ];
 
     return Scaffold(
@@ -106,27 +103,19 @@ class UserProfileScreen extends StatelessWidget {
                 children: [
                   const Text('Artistas Favoritos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 15),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ArtistPage(artistName: 'Kanye West')),
-                      );
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const CircleAvatar(
-                          radius: 40,
-                          backgroundImage: AssetImage('assets/Artists/ye.jpg'),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                            'Kanye West',
-                            style: TextStyle(color: Color(0xFFF3E3B6), fontWeight: FontWeight.bold, fontSize: 12, decoration: TextDecoration.underline)
-                        ),
-                      ],
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const CircleAvatar(
+                        radius: 40,
+                        backgroundImage: AssetImage('assets/Artists/ye.jpg'),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                          'Kanye West',
+                          style: TextStyle(color: Color(0xFFF3E3B6), fontWeight: FontWeight.bold, fontSize: 12)
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -146,26 +135,7 @@ class UserProfileScreen extends StatelessWidget {
                       children: favSongs.map((song) {
                         return Padding(
                           padding: const EdgeInsets.only(right: 15.0),
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MusicPage(
-                                    music: Music(
-                                      id: '${song['artist']}_${song['title']}',
-                                      name: song['title']!,
-                                      artist: song['artist']!,
-                                      album: '',
-                                      listeners: '0',
-                                      imageUrl: song['image']!,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                            child: _buildFavoriteSong(song['title']!, song['image']!),
-                          ),
+                          child: _buildFavoriteSong(song['title']!, song['image']!),
                         );
                       }).toList(),
                     ),
@@ -194,7 +164,6 @@ class UserProfileScreen extends StatelessWidget {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
             image: DecorationImage(image: AssetImage(imagePath), fit: BoxFit.cover),
           ),
         ),
