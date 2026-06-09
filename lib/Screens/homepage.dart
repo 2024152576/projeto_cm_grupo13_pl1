@@ -13,6 +13,7 @@ import 'package:projeto_cm_grupo13_pl1/models/review_model.dart';
 import 'package:projeto_cm_grupo13_pl1/services/auth_service.dart';
 import 'package:projeto_cm_grupo13_pl1/services/database_service.dart';
 import 'package:projeto_cm_grupo13_pl1/services/lastFM_service.dart';
+import 'package:projeto_cm_grupo13_pl1/services/artist_image_service.dart';
 import 'package:projeto_cm_grupo13_pl1/services/notification_service.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/music_page.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/artist_page.dart';
@@ -31,6 +32,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   int _bottomNavIndex = 0;
 
   final LastFmService _lastFmService = LastFmService();
+  late final ArtistImageService _artistImageService =
+      ArtistImageService(lastFmService: _lastFmService);
   final AuthService _authService = AuthService();
   final DatabaseService _databaseService = DatabaseService();
   
@@ -43,6 +46,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   List<Map<String, String>> _artistResults = [];
   _SearchMode _searchMode = _SearchMode.music;
   bool _isLoading = false;
+  int _artistImageLoadGeneration = 0;
   UserModel? _currentUser;
   StreamSubscription<UserModel?>? _userSub;
 
@@ -110,6 +114,50 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         image: DecorationImage(image: _imageFromPath(imagePath), fit: BoxFit.cover),
+      ),
+    );
+  }
+
+  Widget _buildArtistSearchAvatar(String imageUrl, {double size = 50, bool loading = false}) {
+    if (imageUrl.isEmpty || !imageUrl.startsWith('http')) {
+      return CircleAvatar(
+        radius: size / 2,
+        backgroundColor: const Color(0xFF263D4A),
+        child: loading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF8282)),
+              )
+            : Icon(Icons.person, color: Colors.white, size: size * 0.6),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size / 2),
+      child: Image.network(
+        imageUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return SizedBox(
+            width: size,
+            height: size,
+            child: const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFFFF8282),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => CircleAvatar(
+          radius: size / 2,
+          backgroundColor: const Color(0xFF263D4A),
+          child: Icon(Icons.person, color: Colors.white, size: size * 0.6),
+        ),
       ),
     );
   }
@@ -493,18 +541,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                                 color: const Color(0xFF323232),
                                 margin: const EdgeInsets.only(bottom: 10),
                                 child: ListTile(
-                                  leading: image.isNotEmpty
-                                      ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(25),
-                                          child: Image.network(
-                                            image,
-                                            width: 50,
-                                            height: 50,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (c, e, s) => const Icon(Icons.person, color: Colors.white, size: 40),
-                                          ),
-                                        )
-                                      : const Icon(Icons.person, color: Colors.white, size: 40),
+                                  leading: _buildArtistSearchAvatar(image, loading: image.isEmpty),
                                   title: Text(
                                     name,
                                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -1095,6 +1132,35 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
   Widget _buildPlaceholderScreen() => const Center(child: Text('Em breve...', style: TextStyle(color: Colors.white)));
 
 
+  Future<void> _loadArtistImages() async {
+    final generation = _artistImageLoadGeneration;
+    final indices = List.generate(_artistResults.length, (i) => i);
+
+    await ArtistImageService.mapConcurrent(
+      indices,
+      (index, _) async {
+        if (!mounted || generation != _artistImageLoadGeneration) return;
+
+        final artist = _artistResults[index];
+        final image = await _artistImageService.resolveArtistImage(
+          artistName: artist['name'] ?? '',
+          mbid: artist['mbid'],
+        );
+
+        if (!mounted || generation != _artistImageLoadGeneration || image.isEmpty) {
+          return;
+        }
+
+        setState(() {
+          _artistResults[index] = {
+            ..._artistResults[index],
+            'image': image,
+          };
+        });
+      },
+    );
+  }
+
   Future<void> _search(String query) async {
     if (query.trim().isEmpty) {
       setState(() {
@@ -1119,6 +1185,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
             });
           }
         case _SearchMode.artists:
+          _artistImageLoadGeneration++;
           final artists = await _lastFmService.searchArtists(query);
           if (mounted) {
             setState(() {
@@ -1126,6 +1193,7 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
               _results = [];
               _userResults = [];
             });
+            _loadArtistImages();
           }
         case _SearchMode.music:
           final results = await _lastFmService.searchTracks(query);

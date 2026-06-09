@@ -6,6 +6,26 @@ class LastFmService {
   static const String _apiKey = '62d2310a77a7b00387f2dd7ebe4353ab';
   static const String _baseUrl = 'https://ws.audioscrobbler.com/2.0/';
 
+  bool isValidLastFmImage(String url) {
+    if (url.isEmpty) return false;
+    if (url.endsWith('/34s.png')) return false;
+    // Last.fm default placeholders (not real artwork)
+    if (url.contains('2a96bdc') || url.contains('2a96cbd')) return false;
+    return true;
+  }
+
+  String _pickBestLastFmImage(dynamic images, {bool preferThumbnail = false}) {
+    if (images is! List || images.isEmpty) return '';
+
+    final sizeOrder = preferThumbnail ? [2, 1, 3, 0, 4] : [4, 3, 2, 1, 0];
+    for (final sizeIndex in sizeOrder) {
+      if (images.length <= sizeIndex) continue;
+      final url = images[sizeIndex]['#text']?.toString() ?? '';
+      if (isValidLastFmImage(url)) return url;
+    }
+    return '';
+  }
+
   Future<Music> fetchTrack({
     required String track,
     required String artist,
@@ -33,6 +53,7 @@ class LastFmService {
     return Music.fromJson(data['track']);
   }
 
+  /// Fast artist search — names and listeners only; images resolved separately.
   Future<List<Map<String, String>>> searchArtists(String query) async {
     final uri = Uri.parse(
       '$_baseUrl?method=artist.search'
@@ -55,34 +76,18 @@ class LastFmService {
 
     final artists = rawArtists is List ? rawArtists : [rawArtists];
 
-    final results = await Future.wait(artists.map((artist) async {
-      String name = artist['name']?.toString() ?? '';
-      String image = '';
-      
-      // Tenta pegar a imagem do próprio resultado da pesquisa primeiro (raramente vem)
-      if (artist['image'] != null && artist['image'] is List && (artist['image'] as List).isNotEmpty) {
-        // Usa uma imagem menor para a pesquisa (ex: 'large' ou 'extralarge')
-        final images = artist['image'] as List;
-        if (images.length > 2) {
-          image = images[2]['#text'] ?? ''; // 'large'
-        } else {
-          image = images.last['#text'] ?? '';
-        }
-      }
-      
-      // Se não vier imagem na pesquisa (comum), faz um pedido leve para obter info do artista
-      if ((image.isEmpty || image.contains('2a96bea')) && name.isNotEmpty) {
-        image = await getArtistImage(name, quality: 'large');
-      }
-
-      return {
-        'name': name,
-        'image': image,
-        'listeners': artist['listeners']?.toString() ?? '0',
-      };
-    }));
-
-    return results.where((artist) => artist['name']!.isNotEmpty).toList();
+    return artists
+        .map<Map<String, String>>((artist) {
+          final name = artist['name']?.toString() ?? '';
+          return {
+            'name': name,
+            'mbid': artist['mbid']?.toString() ?? '',
+            'image': '',
+            'listeners': artist['listeners']?.toString() ?? '0',
+          };
+        })
+        .where((artist) => artist['name']!.isNotEmpty)
+        .toList();
   }
 
   Future<List<Music>> searchTracks(String query) async {
@@ -157,7 +162,7 @@ class LastFmService {
     return await getArtistImage(artist);
   }
 
-  Future<String> getArtistImage(String artist, {String quality = 'extralarge'}) async {
+  Future<String> getArtistImage(String artist) async {
     try {
       final uri = Uri.parse(
         '$_baseUrl?method=artist.getInfo'
@@ -169,17 +174,7 @@ class LastFmService {
       final response = await http.get(uri);
       final data = jsonDecode(response.body);
 
-      final artistImages = data['artist']?['image'];
-      if (artistImages != null && artistImages is List && artistImages.isNotEmpty) {
-        // Qualidades: 0:small, 1:medium, 2:large, 3:extralarge, 4:mega
-        if (quality == 'large' && artistImages.length > 2) {
-          return artistImages[2]['#text'] ?? '';
-        }
-        if (quality == 'extralarge' && artistImages.length > 3) {
-          return artistImages[3]['#text'] ?? '';
-        }
-        return artistImages.last['#text'] ?? '';
-      }
+      return _pickBestLastFmImage(data['artist']?['image']);
     } catch (_) {}
     return '';
   }
@@ -199,10 +194,7 @@ class LastFmService {
       final albums = data['topalbums']?['album'] as List?;
       if (albums != null) {
         return albums.map<Map<String, String>>((album) {
-          String image = '';
-          if (album['image'] != null && (album['image'] as List).isNotEmpty) {
-            image = album['image'].last['#text'] ?? '';
-          }
+          final image = _pickBestLastFmImage(album['image'], preferThumbnail: true);
           return {
             'name': album['name'] ?? '',
             'image': image,
