@@ -34,6 +34,49 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return const AssetImage('assets/Covers/cdp.jpg');
   }
 
+  Future<void> _confirmDeleteReview(ReviewModel review) async {
+    if (_currentUserId == null || _currentUserId != widget.userId) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF263D4A),
+        title: const Text('Apagar review', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Tens a certeza que queres apagar esta review?',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Apagar', style: TextStyle(color: Color(0xFFFF8282))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _databaseService.apagarReview(_currentUserId!, review.reviewId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review apagada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao apagar review: $e')),
+        );
+      }
+    }
+  }
+
   void _toggleFollow() async {
     if (_currentUserId == null || _currentUserId == widget.userId) return;
     try {
@@ -274,6 +317,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     children: [
                       const Icon(Icons.star, color: Color(0xFFFF8282), size: 16),
                       Text(' ${review.rating}', style: const TextStyle(color: Colors.white)),
+                      if (_currentUserId == widget.userId)
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Color(0xFFFF8282), size: 20),
+                          onPressed: () => _confirmDeleteReview(review),
+                        ),
                     ],
                   ),
                   onTap: () => Navigator.push(

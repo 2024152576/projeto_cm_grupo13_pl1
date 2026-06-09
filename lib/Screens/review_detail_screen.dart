@@ -75,6 +75,55 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
 
   bool get _isLiked => _currentUser?.likedReviews.contains(widget.reviewId) ?? false;
 
+  bool get _isOwnReview =>
+      _authService.currentUser?.uid != null &&
+      _authService.currentUser!.uid == widget.userId;
+
+  Future<void> _confirmDeleteReview() async {
+    final userId = _authService.currentUser?.uid;
+    if (userId == null || !_isOwnReview) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF263D4A),
+        title: const Text('Apagar review', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Tens a certeza que queres apagar esta review?',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Apagar', style: TextStyle(color: Color(0xFFFF8282))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _databaseService.apagarReview(userId, widget.reviewId);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review apagada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao apagar review: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _toggleLike() async {
     final userId = _authService.currentUser?.uid;
     if (userId == null) {
@@ -129,6 +178,14 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          if (_isOwnReview)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Color(0xFFFF8282)),
+              onPressed: _confirmDeleteReview,
+              tooltip: 'Apagar review',
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(

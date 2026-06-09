@@ -105,6 +105,53 @@ class _MusicPageState extends State<MusicPage> {
     }
   }
 
+  Future<void> _deleteReview() async {
+    if (_userReview == null) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF263D4A),
+        title: const Text('Apagar review', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Tens a certeza que queres apagar esta review?',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Apagar', style: TextStyle(color: Color(0xFFFF7D7D))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _databaseService.apagarReview(user.uid, _userReview!.reviewId);
+      if (mounted) {
+        setState(() => _userReview = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review apagada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao apagar review: $e')),
+        );
+      }
+    }
+  }
+
   void _navigateToWriteReview() async {
     final result = await Navigator.push(
       context,
@@ -277,20 +324,35 @@ class _MusicPageState extends State<MusicPage> {
 
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 58,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: pinkColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 58,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: pinkColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        ),
+                        onPressed: _isLoadingReview ? null : _navigateToWriteReview,
+                        child: _isLoadingReview
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Text(_userReview != null ? "Editar Review" : "Adicionar Review",
+                                style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
                     ),
-                    onPressed: _isLoadingReview ? null : _navigateToWriteReview,
-                    child: _isLoadingReview
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(_userReview != null ? "Editar Review" : "Adicionar Review",
-                            style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
+                    if (_userReview != null) ...[
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: _deleteReview,
+                        icon: const Icon(Icons.delete_outline, color: pinkColor),
+                        label: const Text(
+                          'Apagar Review',
+                          style: TextStyle(color: pinkColor, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],

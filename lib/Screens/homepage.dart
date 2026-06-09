@@ -115,6 +115,50 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     }
   }
 
+  Future<void> _confirmDeleteReview(ReviewModel review) async {
+    final userId = _authService.currentUser?.uid;
+    if (userId == null || review.userId != userId) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF263D4A),
+        title: const Text('Apagar review', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Tens a certeza que queres apagar esta review?',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Apagar', style: TextStyle(color: Color(0xFFFF8282))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _databaseService.apagarReview(userId, review.reviewId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review apagada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao apagar review: $e')),
+        );
+      }
+    }
+  }
+
   void _openReviewDetail(ReviewModel review) {
     final songTitle = review.songTitle.isNotEmpty ? review.songTitle : 'Música';
     final artist = review.artist.isNotEmpty ? review.artist : 'Artista desconhecido';
@@ -902,6 +946,10 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                     children: [
                       const Icon(Icons.star, color: Color(0xFFFF8282), size: 16),
                       Text(' ${review.rating}', style: const TextStyle(color: Colors.white)),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Color(0xFFFF8282), size: 20),
+                        onPressed: () => _confirmDeleteReview(review),
+                      ),
                     ],
                   ),
                   onTap: () => _openReviewDetail(review),
@@ -1138,10 +1186,20 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          ReviewLikeButton(
-            likes: review.likes,
-            isLiked: _isReviewLiked(review.reviewId),
-            onTap: () => _toggleReviewLike(review.reviewId),
+          Row(
+            children: [
+              ReviewLikeButton(
+                likes: review.likes,
+                isLiked: _isReviewLiked(review.reviewId),
+                onTap: () => _toggleReviewLike(review.reviewId),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Color(0xFFFF8282), size: 20),
+                onPressed: () => _confirmDeleteReview(review),
+                tooltip: 'Apagar review',
+              ),
+            ],
           ),
         ],
       ),

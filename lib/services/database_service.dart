@@ -111,6 +111,36 @@ class DatabaseService {
     });
   }
 
+  Future<void> apagarReview(String userId, String reviewId) async {
+    final reviewDoc = _db.collection('reviews').doc(reviewId);
+    final userDoc = _db.collection('users').doc(userId);
+
+    await _db.runTransaction((transaction) async {
+      final reviewSnap = await transaction.get(reviewDoc);
+      final userSnap = await transaction.get(userDoc);
+
+      if (!reviewSnap.exists || !userSnap.exists) return;
+
+      final review = ReviewModel.fromMap(reviewSnap.data()!);
+      if (review.userId != userId) {
+        throw Exception('Não podes apagar reviews de outros utilizadores.');
+      }
+
+      final user = UserModel.fromMap(userSnap.data()!);
+      final updates = <String, dynamic>{
+        'reviewsCount': FieldValue.increment(-1),
+      };
+
+      if (user.likedReviews.contains(reviewId)) {
+        final likedReviews = List<String>.from(user.likedReviews)..remove(reviewId);
+        updates['likedReviews'] = likedReviews;
+      }
+
+      transaction.delete(reviewDoc);
+      transaction.update(userDoc, updates);
+    });
+  }
+
   // Favoritar Artista
   Future<void> alternarFavoritoArtista(String userId, Map<String, String> artistData) async {
     final userDoc = _db.collection('users').doc(userId);
