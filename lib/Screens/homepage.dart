@@ -16,6 +16,9 @@ import 'package:projeto_cm_grupo13_pl1/services/lastFM_service.dart';
 import 'package:projeto_cm_grupo13_pl1/services/notification_service.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/music_page.dart';
 import 'package:projeto_cm_grupo13_pl1/Screens/artist_page.dart';
+import 'package:projeto_cm_grupo13_pl1/Screens/user_profile_screen.dart';
+
+enum _SearchMode { music, users, artists }
 
 class MainFeedScreen extends StatefulWidget {
   const MainFeedScreen({super.key});
@@ -37,7 +40,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
 
   List<Music> _results = [];
   List<UserModel> _userResults = [];
-  bool _isSearchingUsers = false;
+  List<Map<String, String>> _artistResults = [];
+  _SearchMode _searchMode = _SearchMode.music;
   bool _isLoading = false;
   UserModel? _currentUser;
   StreamSubscription<UserModel?>? _userSub;
@@ -336,6 +340,70 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     );
   }
 
+  String _searchHintText() {
+    switch (_searchMode) {
+      case _SearchMode.users:
+        return 'Pesquisar utilizadores (@username, nome...)';
+      case _SearchMode.artists:
+        return 'Pesquisar artistas';
+      case _SearchMode.music:
+        return 'Pesquisar música';
+    }
+  }
+
+  String _searchEmptyMessage() {
+    switch (_searchMode) {
+      case _SearchMode.users:
+        return 'Nenhum utilizador encontrado';
+      case _SearchMode.artists:
+        return 'Nenhum artista encontrado';
+      case _SearchMode.music:
+        return 'Pesquise uma música';
+    }
+  }
+
+  bool _hasSearchResults() {
+    switch (_searchMode) {
+      case _SearchMode.users:
+        return _userResults.isNotEmpty;
+      case _SearchMode.artists:
+        return _artistResults.isNotEmpty;
+      case _SearchMode.music:
+        return _results.isNotEmpty;
+    }
+  }
+
+  int _searchResultCount() {
+    switch (_searchMode) {
+      case _SearchMode.users:
+        return _userResults.length;
+      case _SearchMode.artists:
+        return _artistResults.length;
+      case _SearchMode.music:
+        return _results.length;
+    }
+  }
+
+  Widget _buildSearchModeChip({
+    required String label,
+    required _SearchMode mode,
+  }) {
+    final selected = _searchMode == mode;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+      selected: selected,
+      selectedColor: const Color(0xFFFF8282),
+      labelStyle: TextStyle(color: selected ? Colors.white : Colors.grey),
+      backgroundColor: const Color(0xFF323232),
+      onSelected: (_) {
+        setState(() => _searchMode = mode);
+        if (_searchController.text.isNotEmpty) {
+          _search(_searchController.text);
+        }
+      },
+    );
+  }
+
   Widget _buildPesquisaFeed() {
     return SafeArea(
       child: Padding(
@@ -343,15 +411,13 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            
-            // Barra de Pesquisa
             TextField(
               controller: _searchController,
               textInputAction: TextInputAction.search,
               style: const TextStyle(color: Colors.white),
               onSubmitted: (value) => _search(value),
               decoration: InputDecoration(
-                hintText: _isSearchingUsers ? 'Pesquisar utilizadores (@username, nome...)' : 'Pesquisar música',
+                hintText: _searchHintText(),
                 hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 filled: true,
@@ -362,62 +428,32 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                 ),
               ),
             ),
-            
             const SizedBox(height: 15),
-
-            // Toggle Música / Utilizadores
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ChoiceChip(
-                  label: const Text('Músicas', style: TextStyle(fontWeight: FontWeight.bold)),
-                  selected: !_isSearchingUsers,
-                  selectedColor: const Color(0xFFFF8282),
-                  labelStyle: TextStyle(color: !_isSearchingUsers ? Colors.white : Colors.grey),
-                  backgroundColor: const Color(0xFF323232),
-                  onSelected: (selected) {
-                    setState(() {
-                      _isSearchingUsers = false;
-                      if (_searchController.text.isNotEmpty) _search(_searchController.text);
-                    });
-                  },
-                ),
-                const SizedBox(width: 15),
-                ChoiceChip(
-                  label: const Text('Utilizadores', style: TextStyle(fontWeight: FontWeight.bold)),
-                  selected: _isSearchingUsers,
-                  selectedColor: const Color(0xFFFF8282),
-                  labelStyle: TextStyle(color: _isSearchingUsers ? Colors.white : Colors.grey),
-                  backgroundColor: const Color(0xFF323232),
-                  onSelected: (selected) {
-                    setState(() {
-                      _isSearchingUsers = true;
-                      if (_searchController.text.isNotEmpty) _search(_searchController.text);
-                    });
-                  },
-                ),
+                _buildSearchModeChip(label: 'Músicas', mode: _SearchMode.music),
+                const SizedBox(width: 10),
+                _buildSearchModeChip(label: 'Artistas', mode: _SearchMode.artists),
+                const SizedBox(width: 10),
+                _buildSearchModeChip(label: 'Utilizadores', mode: _SearchMode.users),
               ],
             ),
-
             const SizedBox(height: 20),
-
-            // Lista de Resultados
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : (!_isSearchingUsers && _results.isEmpty) || (_isSearchingUsers && _userResults.isEmpty)
+                  : !_hasSearchResults()
                       ? Center(
                           child: Text(
-                            _isSearchingUsers ? 'Nenhum utilizador encontrado' : 'Pesquise uma música',
+                            _searchEmptyMessage(),
                             style: const TextStyle(color: Colors.grey, fontSize: 16),
                           ),
                         )
                       : ListView.builder(
-                          itemCount: _isSearchingUsers ? _userResults.length : _results.length,
+                          itemCount: _searchResultCount(),
                           itemBuilder: (context, index) {
-                            
-                            // SE ESTIVERMOS A MOSTRAR UTILIZADORES
-                            if (_isSearchingUsers) {
+                            if (_searchMode == _SearchMode.users) {
                               final user = _userResults[index];
                               return Card(
                                 color: const Color(0xFF323232),
@@ -434,42 +470,90 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                                   ),
                                   trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
                                   onTap: () {
-                                    // TODO: Navegar para o ecrã de Perfil do Utilizador clicado
-                                    // Navigator.push(context, MaterialPageRoute(builder: (_) => OutroPerfilScreen(userId: user.userId)));
-                                    print('Clicou no utilizador: ${user.username}');
-                                  },
-                                ),
-                              );
-                            } 
-                            
-                            // SE ESTIVERMOS A MOSTRAR MÚSICAS
-                            else {
-                              final music = _results[index];
-                              return Card(
-                                color: const Color(0xFF323232),
-                                margin: const EdgeInsets.only(bottom: 10),
-                                child: ListTile(
-                                  leading: music.imageUrl.isNotEmpty
-                                      ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: Image.network(
-                                            music.imageUrl, width: 55, height: 55, fit: BoxFit.cover,
-                                            errorBuilder: (c, e, s) => const Icon(Icons.music_note, color: Colors.white, size: 40),
-                                          ),
-                                        )
-                                      : const Icon(Icons.music_note, color: Colors.white, size: 40),
-                                  title: Text(
-                                    music.name,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                  ),
-                                  subtitle: Text(music.artist, style: const TextStyle(color: Colors.grey)),
-                                  trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
-                                  onTap: () {
-                                    Navigator.push(context, MaterialPageRoute(builder: (_) => MusicPage(music: music)));
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => UserProfileScreen(
+                                          userId: user.userId,
+                                          userName: user.fullName,
+                                          profileImagePath: '',
+                                        ),
+                                      ),
+                                    );
                                   },
                                 ),
                               );
                             }
+
+                            if (_searchMode == _SearchMode.artists) {
+                              final artist = _artistResults[index];
+                              final name = artist['name'] ?? '';
+                              final image = artist['image'] ?? '';
+                              return Card(
+                                color: const Color(0xFF323232),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                child: ListTile(
+                                  leading: image.isNotEmpty
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(25),
+                                          child: Image.network(
+                                            image,
+                                            width: 50,
+                                            height: 50,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (c, e, s) => const Icon(Icons.person, color: Colors.white, size: 40),
+                                          ),
+                                        )
+                                      : const Icon(Icons.person, color: Colors.white, size: 40),
+                                  title: Text(
+                                    name,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    '${artist['listeners'] ?? '0'} ouvintes',
+                                    style: const TextStyle(color: Colors.grey),
+                                  ),
+                                  trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ArtistPage(artistName: name),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            }
+
+                            final music = _results[index];
+                            return Card(
+                              color: const Color(0xFF323232),
+                              margin: const EdgeInsets.only(bottom: 10),
+                              child: ListTile(
+                                leading: music.imageUrl.isNotEmpty
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          music.imageUrl,
+                                          width: 55,
+                                          height: 55,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (c, e, s) => const Icon(Icons.music_note, color: Colors.white, size: 40),
+                                        ),
+                                      )
+                                    : const Icon(Icons.music_note, color: Colors.white, size: 40),
+                                title: Text(
+                                  music.name,
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(music.artist, style: const TextStyle(color: Colors.grey)),
+                                trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                                onTap: () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => MusicPage(music: music)));
+                                },
+                              ),
+                            );
                           },
                         ),
             ),
@@ -972,34 +1056,47 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
       setState(() {
         _results = [];
         _userResults = [];
+        _artistResults = [];
       });
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      if (_isSearchingUsers) {
-        // Pesquisa Utilizadores
-        final users = await _databaseService.pesquisarUtilizadores(query);
-        setState(() {
-          _userResults = users;
-        });
-      } else {
-        // Pesquisa Músicas
-        final results = await _lastFmService.searchTracks(query);
-        setState(() {
-          _results = results;
-        });
+      switch (_searchMode) {
+        case _SearchMode.users:
+          final users = await _databaseService.pesquisarUtilizadores(query);
+          if (mounted) {
+            setState(() {
+              _userResults = users;
+              _results = [];
+              _artistResults = [];
+            });
+          }
+        case _SearchMode.artists:
+          final artists = await _lastFmService.searchArtists(query);
+          if (mounted) {
+            setState(() {
+              _artistResults = artists;
+              _results = [];
+              _userResults = [];
+            });
+          }
+        case _SearchMode.music:
+          final results = await _lastFmService.searchTracks(query);
+          if (mounted) {
+            setState(() {
+              _results = results;
+              _userResults = [];
+              _artistResults = [];
+            });
+          }
       }
     } catch (e) {
       print(e);
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) setState(() => _isLoading = false);
   }
 }

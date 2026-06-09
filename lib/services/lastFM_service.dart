@@ -33,6 +33,41 @@ class LastFmService {
     return Music.fromJson(data['track']);
   }
 
+  Future<List<Map<String, String>>> searchArtists(String query) async {
+    final uri = Uri.parse(
+      '$_baseUrl?method=artist.search'
+          '&artist=${Uri.encodeComponent(query)}'
+          '&api_key=$_apiKey'
+          '&format=json'
+          '&limit=20',
+    );
+
+    final response = await http.get(uri);
+
+    if (response.statusCode != 200) {
+      throw Exception('Erro HTTP ${response.statusCode}');
+    }
+
+    final data = jsonDecode(response.body);
+    final rawArtists = data['results']?['artistmatches']?['artist'];
+
+    if (rawArtists == null) return [];
+
+    final artists = rawArtists is List ? rawArtists : [rawArtists];
+
+    return artists.map<Map<String, String>>((artist) {
+      String image = '';
+      if (artist['image'] != null && artist['image'] is List && (artist['image'] as List).isNotEmpty) {
+        image = artist['image'].last['#text'] ?? '';
+      }
+      return {
+        'name': artist['name']?.toString() ?? '',
+        'image': image,
+        'listeners': artist['listeners']?.toString() ?? '0',
+      };
+    }).where((artist) => artist['name']!.isNotEmpty).toList();
+  }
+
   Future<List<Music>> searchTracks(String query) async {
     final uri = Uri.parse(
       '$_baseUrl?method=track.search'
